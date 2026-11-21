@@ -10,9 +10,11 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Init**: The skill command that scans the target project and writes `DESIGN.md` if it does not already exist. For an existing design system it summarizes the tokens and language it finds.
 
-**Create from design**: The command that generates a component from a design input: an image or screenshot, or a Figma link once that connection works.
+**from-figma**: The command that generates a component from a design input: an image or screenshot, or a Figma link once that connection works.
 
-**Create from text**: The command that generates a component from a plain-text description.
+**from-text**: The command that generates a component from a plain-text description.
+
+**Component folder**: The per-component directory the generator writes: `Name.tsx`, `Name.css` (or `Name.module.css`, or none when the project's language is utility classes), `Name.stories.tsx`, and `index.ts`. Components are co-located with their files rather than sorted by file type.
 
 **Review**: The command that audits existing components against `DESIGN.md` and the mobile-first and AI-usability goals.
 
