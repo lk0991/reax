@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: visual-report layout</title>
+<style>
+  /* PROTOTYPE, throwaway. Static sample of visual-report/index.html for ticket #6. */
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #15171c;
+    --muted: #5a616e;
+    --border: #d9dde4;
+    --pass: #1b7a43;
+    --pass-bg: #e4f4ea;
+    --warn: #8a5a00;
+    --warn-bg: #fdf1d6;
+    --fail: #a3262b;
+    --fail-bg: #fbe5e6;
+    --info: #1f4f9a;
+    --info-bg: #e6eefb;
+    --radius: 10px;
+    --space: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --text: #eceef2;
+      --muted: #a4abb8;
+      --border: #2b303a;
+      --pass: #6fd39a;   --pass-bg: #163424;
+      --warn: #f0c46a;   --warn-bg: #3a2e12;
+      --fail: #ff8a8f;   --fail-bg: #3d1719;
+      --info: #9fc0f5;   --info-bg: #152640;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --surface: #171a21; --text: #eceef2; --muted: #a4abb8; --border: #2b303a;
+    --pass: #6fd39a; --pass-bg: #163424; --warn: #f0c46a; --warn-bg: #3a2e12;
+    --fail: #ff8a8f; --fail-bg: #3d1719; --info: #9fc0f5; --info-bg: #152640;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: var(--space);
+    max-width: 960px;
+    margin-inline: auto;
+  }
+  .banner {
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    background: var(--warn-bg); color: var(--warn);
+    padding: 8px 12px; border-radius: 6px; margin-bottom: var(--space);
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.125rem; margin: 28px 0 12px; }
+  .meta { color: var(--muted); font-size: 14px; margin: 0 0 var(--space); }
+
+  /* Summary: three stacked tiles on phones, one row from 600px */
+  .summary { display: grid; gap: 8px; grid-template-columns: 1fr; margin-bottom: var(--space); }
+  @media (min-width: 600px) { .summary { grid-template-columns: repeat(3, 1fr); } }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .tile strong { font-size: 1.75rem; line-height: 1; }
+  .tile span { color: var(--muted); font-size: 14px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .badge.pass { color: var(--pass); background: var(--pass-bg); }
+  .badge.warn { color: var(--warn); background: var(--warn-bg); }
+  .badge.fail { color: var(--fail); background: var(--fail-bg); }
+  .badge.info { color: var(--info); background: var(--info-bg); }
+
+  /* Results: one card per story, stacked on phones. No table, so nothing scrolls sideways. */
+  .results { display: grid; gap: 10px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; display: grid; gap: 10px;
+  }
+  .card-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  .story { font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; word-break: break-all; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0; font-size: 14px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .captures { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--muted); }
+  .captures span { border: 1px dashed var(--border); border-radius: 6px; padding: 2px 8px; }
+  .captures .ok { color: var(--pass); border-style: solid; }
+  .captures .bad { color: var(--fail); border-style: solid; }
+
+  /* Accessibility findings: grouped by impact, serious and critical block the run */
+  .finding {
+    background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px;
+  }
+  .finding.critical, .finding.serious { border-left-color: var(--fail); }
+  .finding.moderate { border-left-color: var(--warn); }
+  .finding.minor { border-left-color: var(--info); }
+  .finding h3 { font-size: 15px; margin: 6px 0 4px; }
+  .finding p { margin: 4px 0; font-size: 14px; color: var(--muted); }
+  .finding code { font-size: 13px; word-break: break-all; }
+  .gate { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+
+  .legend { font-size: 13px; color: var(--muted); margin-top: 24px; }
+  @media (min-width: 720px) {
+    .card { grid-template-columns: 1.4fr 1fr; align-items: start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">Prototype · throwaway · static sample for ticket #6</div>
+
+<h1>Visual report</h1>
+<p class="meta">Run 2026-11-21 · Storybook stories · Viewports 390×844 and 1280×800 · Threshold 0.1% (warn only)</p>
+
+<section class="summary" aria-label="Run summary">
+  <div class="tile"><span>Pass</span><strong>9</strong></div>
+  <div class="tile"><span>Warning</span><strong>2</strong></div>
+  <div class="tile"><span>Failure</span><strong>1</strong></div>
+</section>
+
+<h2>Screenshot results</h2>
+<div class="results">
+
+  <article class="card">
+    <div class="card-head">
+      <span class="story">Button/Primary · 390×844</span>
+      <span class="badge pass">Pass</span>
+    </div>
+    <dl class="facts">
+      <dt>Pixel diff</dt><dd>0.00%</dd>
+      <dt>Baseline</dt><dd>approved</dd>
+    </dl>
+    <div class="captures"><span class="ok">320px reflow</span><span class="ok">200% text</span></div>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="story">Card/Product · 390×844</span>
+      <span class="badge warn">Warning</span>
+    </div>
+    <dl class="facts">
+      <dt>Pixel diff</dt><dd>0.32% (over 0.1%)</dd>
+      <dt>Baseline</dt><dd>approved</dd>
+    </dl>
+    <div class="captures"><span class="ok">320px reflow</span><span class="ok">200% text</span></div>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <span class="story">Modal/Confirm · 1280×800</span>
+      <span class="badge fail">Failure</span>
+    </div>
+    <dl class="facts">
+      <dt>Pixel diff</dt><dd>2.41%</dd>
+      <dt>Blocking a11y</dt><dd>1 serious</dd>
+    </dl>
+    <div class="captures"><span class="bad">320px reflow: overflow</span><span class="ok">200% text</span></div>
+  </article>
+
+</div>
+
+<h2>Accessibility findings</h2>
+<p class="gate">axe-core: serious and critical block the run. Moderate and minor are reported only.</p>
+
+<div class="finding serious">
+  <span class="badge fail">Serious · blocks</span>
+  <h3>Modal/Confirm: dialog has no accessible name</h3>
+  <p>Rule <code>aria-dialog-name</code> · <code>#confirm-modal</code></p>
+  <p>Fix: give the dialog an <code>aria-labelledby</code> pointing at its heading.</p>
+</div>
+
+<div class="finding moderate">
+  <span class="badge warn">Moderate</span>
+  <h3>Card/Product: image lacks alt text</h3>
+  <p>Rule <code>image-alt</code> · <code>.card-media img</code></p>
+</div>
+
+<div class="finding minor">
+  <span class="badge info">Minor</span>
+  <h3>Button/Primary: focus ring thinner than design token</h3>
+  <p>Rule <code>focus-visible</code> · <code>.btn:focus-visible</code></p>
+</div>
+
+<p class="legend">Layout sample only. Counts, numbers and rules are placeholders chosen to show each state.</p>
+
+</body>
+</html>
