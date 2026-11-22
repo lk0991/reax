@@ -65,7 +65,7 @@
   .frame-wrap { position:relative; width:max-content; padding-right:16px; }
   .frame-wrap.gutter { margin-left:44px; padding-right:60px; }
   #scaler { position:relative; }
-  #frame { position:absolute; left:0; top:0; height:520px; background:#8b909a; overflow:hidden; border:1px solid #5f6672; border-radius:6px; transform-origin:0 0; }
+  #frame { position:absolute; left:0; top:0; background:#8b909a; overflow:hidden; border:1px solid #5f6672; border-radius:6px; transform-origin:0 0; }
   #frame.t200 #stage { font-size:200%; }
   #frame.parts [data-slot] { outline:1.5px dashed var(--ui-ink); outline-offset:1px; }
   #stage { font-size:16px; position:absolute; inset:0; display:grid; place-items:center; padding:12px; font-family:system-ui,sans-serif; color:var(--color-text); }
@@ -93,9 +93,6 @@
   .comment { border:1px solid var(--ui-line); border-radius:8px; padding:8px 10px; margin:8px 0; }
   .comment:hover { border-color:var(--accent); }
   .card-h { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--ui-line); vertical-align:top; }
-  td code { white-space:nowrap; }
   code { font:12px ui-monospace,monospace; background:#eceef2; padding:1px 4px; border-radius:4px; overflow-wrap:anywhere; }
   .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:999px; background:#eceef2; font-weight:600; }
   .tag.open { background:var(--info-wash); color:var(--info); } .tag.addressed { background:var(--warn-wash); color:var(--warn); } .tag.resolved { background:var(--ok-wash); color:var(--ok); }
@@ -255,7 +252,7 @@ const FIELDS = {
 };
 const PRIMARY = ['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor'], MORE = ['height', 'width'];
 const MODE_LABEL = { test: 'Test', comment: 'Comment', anatomy: 'Anatomy', edit: 'Edit' };
-const state = { mode: 'test', view: 'parts', width: 390, scale: 1, frameH: 520, t200: false, story: 'short', selected: null, comments: [], viewports: [], draft: [], original: '', draftHTML: '', viewingOriginal: false, sweep: null, receipt: null, offline: false, demoDismissed: false };
+const state = { mode: 'test', view: 'parts', width: 390, scale: 1, frameH: FRAME_H, t200: false, story: 'short', selected: null, comments: [], viewports: [], draft: [], original: '', draftHTML: '', viewingOriginal: false, sweep: null, receipt: null, offline: false, demoDismissed: false };
 const frame = $('#frame'), stage = $('#stage'), panel = $('#panel'), hl = $('#hl'), sel = $('#sel'), pins = $('#pins'), badges = $('#badges'), rail = $('#rail');
 const announce = (m) => { $('#status').textContent = ''; setTimeout(() => ($('#status').textContent = m), 30); };
 
@@ -596,7 +593,7 @@ function setFrameH(h) { state.frameH = h; fit(); drawOverlay(); updateStageTop()
 function fitNotice() {
   const cut = frameFit().map((f, i) => (f.cut ? i + 1 : 0)).filter(Boolean); let h = '';
   if (cut.length) h += `<div class="caution">${cut.length === 1 ? 'Part' : 'Parts'} ${cut.join(', ')} ${cut.length === 1 ? 'is' : 'are'} cut off by the frame, so ${cut.length === 1 ? 'it is' : 'they are'} not fully visible here. <button class="b sm" id="growFrame" type="button">Grow frame to fit</button></div>`;
-  if (state.frameH !== 520) h += `<p class="note">Frame grown to ${state.frameH}px. <button class="b sm" id="resetFrame" type="button">Reset height</button></p>`;
+  if (state.frameH !== FRAME_H) h += `<p class="note">Frame grown to ${state.frameH}px. <button class="b sm" id="resetFrame" type="button">Reset height</button></p>`;
   return h;
 }
 function anatomyPanel() {
@@ -665,8 +662,8 @@ function bindPanel() {
     b.onclick = () => goView(b.dataset.view, false);
     b.onkeydown = (e) => { const order = ['parts', 'props', 'tokens', 'accessibility']; const i = order.indexOf(b.dataset.view); const to = { ArrowRight: order[(i + 1) % 4], ArrowLeft: order[(i + 3) % 4], Home: order[0], End: order[3] }[e.key]; if (to) { e.preventDefault(); goView(to, true); } };
   });
-  const gf = $('#growFrame'); if (gf) gf.onclick = () => setFrameH(Math.max(520, $('[data-slot="dialog"]', stage).offsetHeight + 24));
-  const rf = $('#resetFrame'); if (rf) rf.onclick = () => setFrameH(520);
+  const gf = $('#growFrame'); if (gf) gf.onclick = () => setFrameH(Math.max(FRAME_H, $('[data-slot="dialog"]', stage).offsetHeight + 24));
+  const rf = $('#resetFrame'); if (rf) rf.onclick = () => setFrameH(FRAME_H);
   const et = $('#etext'); if (et) et.oninput = () => { const el = state.selected, s = selectorOf(el); el.textContent = et.value; state.draft = state.draft.filter((x) => !(x.selector === s && x.property === 'text')); state.draft.push({ selector: s, property: 'text', from: '(original)', to: JSON.stringify(et.value) }); afterDraftChange(); };
   const ei = $('#eintent'); if (ei) ei.onchange = () => { const el = state.selected, s = selectorOf(el); el.classList.remove('primary', 'danger'); if (ei.value) el.classList.add(ei.value); state.draft = state.draft.filter((x) => !(x.selector === s && x.property === 'intent')); state.draft.push({ selector: s, property: 'intent', from: '(original)', to: ei.value || 'neutral' }); afterDraftChange(); };
   $$('select[data-key]').forEach((s) => (s.onchange = () => applyEdit(state.selected, FIELDS[s.dataset.key], s.value)));
