@@ -113,6 +113,8 @@
   .item-h .tag { margin-left:auto; }
   .tag.bad { background:var(--bad-wash); color:var(--bad); }
   .tag.warn { background:var(--warn-wash); color:var(--warn); }
+  .grp { margin:14px 0 4px; font-size:13px; }
+  .sw { display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid var(--ui-line); align-self:center; }
   #panel { overflow-wrap:anywhere; } /* a 150-character name with no spaces must not push the rail wider */
   .num { display:inline-grid; place-items:center; min-width:20px; height:20px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; font-variant-numeric:tabular-nums; align-self:center; }
   .val { margin-top:4px; }
@@ -283,6 +285,7 @@ function selectorOf(el) {
 function resolve(sel) { const m = sel.match(/^\[data-slot="(.+?)"\](?::nth\((\d+)\))?$/); return m ? $$(`[data-slot="${m[1]}"]`, stage)[Number(m[2] || 1) - 1] || null : null; }
 const IMPLICIT = { BUTTON: 'button', H2: 'heading', P: 'paragraph', DIV: 'generic' };
 const roleOf = (el) => el.getAttribute('role') || IMPLICIT[el.tagName] || 'generic';
+const roleLabel = (el) => (roleOf(el) === 'generic' ? 'no role' : roleOf(el)); /* "generic" is ARIA's word for a plain container; say what it means */
 function nameOf(el) {
   if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
   const by = el.getAttribute('aria-labelledby'); if (by && document.getElementById(by)) return document.getElementById(by).textContent.trim();
@@ -309,8 +312,8 @@ function currentToken(el, f) {
   const cs = getComputedStyle(el);
   if (f.key === 'fontSize') return fontToken(el);
   if (f.group === 'color') { const c = rgb(cs[f.key]); if (c.a < 0.05) return 'none (transparent)'; const v = hex(c); const t = tokenFor('color', v); return t ? `${t} (${v})` : `${v} (no token)`; }
-  if (f.key === 'padding') { const s = ['Top', 'Right', 'Bottom', 'Left'].map((k) => px(cs['padding' + k])); if (s.every((x) => x === s[0])) { const t = tokenFor('padding', s[0]); return t ? `${t} (${s[0]})` : `${s[0]} (no token)`; } return (s[0] === s[2] && s[1] === s[3] ? `${s[0]} ${s[1]}` : s.join(' ')) + ' (mixed)'; }
-  if (f.key === 'borderRadius') { const v = px(cs.borderTopLeftRadius); const t = tokenFor('borderRadius', v); return t ? `${t} (${v})` : `${v} (no token)`; }
+  if (f.key === 'padding') { const s = ['Top', 'Right', 'Bottom', 'Left'].map((k) => px(cs['padding' + k])); if (s.every((x) => x === s[0])) { if (s[0] === '0px') return 'none (no padding)'; const t = tokenFor('padding', s[0]); return t ? `${t} (${s[0]})` : `${s[0]} (no token)`; } const short = s[0] === s[2] && s[1] === s[3] ? `${s[0]} ${s[1]}` : s.join(' '); const names = s.map((v) => (v === '0px' ? '0' : tokenFor('padding', v))); return names.every(Boolean) ? `${short} (${[...new Set(names.filter((n) => n !== '0'))].join(', ')})` : `${short} (sides differ)`; }
+  if (f.key === 'borderRadius') { const v = px(cs.borderTopLeftRadius); if (v === '0px') return 'none (square corners)'; const t = tokenFor('borderRadius', v); return t ? `${t} (${v})` : `${v} (no token)`; }
   const v = (f.key === 'height' ? el.offsetHeight : el.offsetWidth) + 'px'; const t = tokenFor('size', v); return t ? `${t} (${v})` : `${v} (no token)`;
 }
 const breakpoint = (w) => (w < 360 ? 'xs' : w < 640 ? 'sm' : w < 1024 ? 'md' : 'lg');
@@ -557,6 +560,38 @@ function frameFit() {
   const fr = frame.getBoundingClientRect();
   return $$('[data-slot]', stage).map((e) => { const r = e.getBoundingClientRect(); const out = r.top >= fr.bottom - 1 || r.bottom <= fr.top + 1 || r.left >= fr.right - 1 || r.right <= fr.left + 1; return { out, cut: out || r.bottom > fr.bottom + 1 || r.top < fr.top - 1 || r.right > fr.right + 1 || r.left < fr.left - 1 }; });
 }
+/* The style the browser gives a bare element of this kind, read from a blank page. A value that matches it is a browser default: nothing in the component set it. */
+let uaFrame;
+function uaStyle(tag) {
+  try {
+    if (!uaFrame) { uaFrame = document.createElement('iframe'); uaFrame.setAttribute('aria-hidden', 'true'); uaFrame.tabIndex = -1; uaFrame.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden'; document.body.appendChild(uaFrame); }
+    const d = uaFrame.contentDocument; const e = d.createElement(tag); d.body.appendChild(e); const cs = uaFrame.contentWindow.getComputedStyle(e);
+    const out = { padding: ['Top', 'Right', 'Bottom', 'Left'].map((k) => px(cs['padding' + k])).join(' '), borderRadius: px(cs.borderTopLeftRadius), fontSize: px(cs.fontSize), color: cs.color, backgroundColor: cs.backgroundColor };
+    d.body.removeChild(e); return out;
+  } catch { return null; }
+}
+const ownValue = (el, k) => { const cs = getComputedStyle(el); return k === 'padding' ? ['Top', 'Right', 'Bottom', 'Left'].map((s) => px(cs['padding' + s])).join(' ') : k === 'borderRadius' ? px(cs.borderTopLeftRadius) : k === 'fontSize' ? px(cs.fontSize) : cs[k]; };
+function tokensView(el, isDefault) {
+  const ua = uaStyle(el.tagName.toLowerCase()); const tag = el.tagName.toLowerCase();
+  const fromTokens = [], notTokens = [], unset = [];
+  ['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].forEach((k) => {
+    const f = FIELDS[k]; const text = currentToken(el, f); const sw = (text.match(/#[0-9a-f]{6}/i) || [])[0];
+    const head = `<span class="item-h"><span>${f.label}</span>${sw ? `<span class="sw" style="background:${sw}" aria-hidden="true"></span>` : ''}<code>${esc(text)}</code></span>`;
+    if (/^none /.test(text)) { unset.push(f.label.toLowerCase()); return; }
+    if (!/\(no token\)|\(sides differ\)/.test(text)) { fromTokens.push(`<div class="item">${head}</div>`); return; }
+    const isUA = ua && ua[k] !== undefined && ua[k] === ownValue(el, k);
+    /* if the browser's defaults cannot be read here (a sandboxed page), say only what is known instead of guessing */
+    const label = k === 'height' ? 'from layout' : !ua ? 'no token' : isUA ? 'browser default' : 'raw value';
+    const why = k === 'height' ? 'Set by the layout, not by a size token.' : !ua ? 'No token matches it. The browser defaults could not be checked here.' : isUA ? `The browser's own style for a ${tag}. Nothing in the component sets it.` : 'Set in the component as a raw value. No token matches it.';
+    notTokens.push(`<div class="item">${head}<div class="note"><span class="tag${k === 'height' ? '' : ' warn'}">${label}</span> ${esc(why)}</div></div>`);
+  });
+  const grp = (title, items, empty) => `<h4 class="grp">${title} (${items.length})</h4>` + (items.length ? `<div class="list">${items.join('')}</div>` : `<p class="note">${empty}</p>`);
+  return (isDefault ? '<p class="note">Showing the dialog. Select a part to see its tokens.</p>' : '')
+    + grp('From tokens', fromTokens, 'Nothing on this part uses a token.')
+    + grp('Not from tokens', notTokens, 'Everything on this part uses a token.')
+    + '<p class="note">A value is not from a token when the browser supplies it or the component hard-codes it, instead of taking it from <code>DESIGN.md</code>.</p>'
+    + (unset.length ? `<p class="note">No ${unset.length > 1 ? unset.slice(0, -1).join(', ') + ' or ' + unset[unset.length - 1] : unset[0]} set on this part.</p>` : '');
+}
 function setFrameH(h) { state.frameH = h; fit(); drawOverlay(); updateStageTop(); renderPanel(); }
 function fitNotice() {
   const cut = frameFit().map((f, i) => (f.cut ? i + 1 : 0)).filter(Boolean); let h = '';
@@ -572,10 +607,10 @@ function anatomyPanel() {
   /* a row is a button: it selects the part, and hovering or focusing it lights up the part on the frame */
   const fitInfo = frameFit();
   const row = (e, i, note, tag) => `<button type="button" class="item item-btn${i === selIdx ? ' sel' : ''}" data-part="${i}" aria-pressed="${i === selIdx}"><span class="item-h"><span class="num">${i + 1}</span><code>${e.dataset.slot}</code>${tag || ''}${fitInfo[i].out ? '<span class="tag bad">outside frame</span>' : fitInfo[i].cut ? '<span class="tag warn">cut off</span>' : ''}</span><span class="note">${note}</span></button>`;
-  if (state.view === 'parts') h += `<p class="note">Select a part here or on the frame. Numbers match the frame.</p><div class="list">${slots.map((e, i) => row(e, i, `${e.tagName.toLowerCase()} · ${roleOf(e)}${isTarget(e) || e.tagName === 'H2' ? ` · “${esc(nameOf(e))}”` : ''}`)).join('')}</div>`;
-  if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent)], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><div class="list">${rows.map((r) => `<div class="item"><div class="item-h"><code>${r[0]}</code><span class="note">${esc(r[1])}</span></div><div class="val"><code>${esc(r[2])}</code></div></div>`).join('')}</div>`; }
-  if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? '' : '<p class="note">Showing the dialog. Select a part on the frame, or in Parts, to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
-  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<div class="list">${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return row(e, i, `${roleOf(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : ' · <em>no accessible name</em>'}`, isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ' too small' : ''}</span>` : ''); }).join('')}</div><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
+  if (state.view === 'parts') h += `<p class="note">Select a part here or on the frame. Numbers match the frame.</p><div class="list">${slots.map((e, i) => row(e, i, `${e.tagName.toLowerCase()} · ${roleLabel(e)}${isTarget(e) || e.tagName === 'H2' ? ` · “${esc(nameOf(e))}”` : ''}`)).join('')}</div>`;
+  if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent)], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Props of ${esc($('#story').selectedOptions[0].textContent)}. Types and JSDoc come from the component source.</p><div class="list">${rows.map((r) => `<div class="item"><div class="item-h"><code>${r[0]}</code><span class="note">${esc(r[1])}</span></div><div class="val"><code>${esc(r[2])}</code></div></div>`).join('')}</div>`; }
+  if (state.view === 'tokens') h += tokensView(state.selected || $('[data-slot="dialog"]', stage), !state.selected);
+  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<div class="list">${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return row(e, i, `${roleLabel(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : ' · <em>no accessible name</em>'}`, isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ` · under ${FLOOR}px` : ''}</span>` : ''); }).join('')}</div><h4 class="grp">Tab order</h4><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Tab order follows the order of the elements in the markup. Buttons smaller than ${FLOOR}×${FLOOR}px are flagged: that is the minimum target size in WCAG 2.2 level AA.</p>`; }
   return head + `<div role="tabpanel" id="anatomyPanel" aria-labelledby="tab-${state.view}" tabindex="0">` + h.slice(head.length) + '</div>';
 }
 function editPanel() {
