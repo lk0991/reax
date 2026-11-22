@@ -27,7 +27,7 @@ Opened straight from disk, or hosted without the helper, the page falls back to 
 
 - The frame fits the screen (shown at a percentage, sizes stay real pixels), the rail is a bottom sheet on phones, and the viewport controls collapse behind one summary row.
 - Edit keeps focus while typing, shows what a value really is (a token, or "no token"), and a Draft strip above the frame stays visible in every mode, with Show original and Discard. The sweep says when it ran on a draft and states its rule.
-- Selection stays when you switch mode, with a solid outline, a mode chip, pins offset off the element, list-to-pin highlighting, and numbered anatomy badges that avoid each other.
+- Selection stays when you switch mode, with a solid outline, a mode chip, pins offset off the element, and list-to-pin highlighting. Anatomy parts are numbered in the margins beside the frame, each joined to its element by a dotted leader line, on the side nearest the element, so nothing is drawn on the component itself.
 - Keys 1 to 4 switch mode, Esc deselects, the handle resizes with the arrow keys, and there is a width field. Comments can be removed and widths unpinned.
 - Known detector note: the nested-cards warning at 390px is the small bordered buttons inside a comment card; judged a false positive and left as is.
 

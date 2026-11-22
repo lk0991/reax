@@ -63,6 +63,7 @@
   .draftpill { background:var(--warn-wash); color:var(--warn); font-size:13px; padding:3px 10px; border-radius:999px; font-weight:600; }
 
   .frame-wrap { position:relative; width:max-content; padding-right:16px; }
+  .frame-wrap.gutter { margin-left:44px; padding-right:60px; }
   #scaler { position:relative; }
   #frame { position:absolute; left:0; top:0; height:520px; background:#8b909a; overflow:hidden; border:1px solid #5f6672; border-radius:6px; transform-origin:0 0; }
   #frame.t200 #stage { font-size:200%; }
@@ -310,7 +311,7 @@ function checkLayout() {
 /* ---------- frame size, scale and overlays ---------- */
 function fit() {
   const wrap = $('#stageWrap'); const cs = getComputedStyle(wrap);
-  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16;
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16 - ($('#fw').classList.contains('gutter') ? 88 : 0);
   state.scale = Math.max(0.25, Math.min(1, avail / state.width));
   frame.style.width = state.width + 'px'; frame.style.transform = `scale(${state.scale})`;
   const sc = $('#scaler'); sc.style.width = Math.round(state.width * state.scale) + 'px'; sc.style.height = Math.round(FRAME_H * state.scale) + 'px';
@@ -336,13 +337,27 @@ function drawOverlay() {
   state.comments.filter((c) => !partsView && c.kind !== 'accepted-exception' && c.story === state.story && !state.viewingOriginal).forEach((c) => { const el = resolve(c.selector); if (!el) return; const r = el.getBoundingClientRect(); const d = document.createElement('div'); d.className = 'pin ' + c.status; d.dataset.id = c.id; d.textContent = c.id.slice(1); d.style.left = Math.max(12, r.right - f.left + 10) + 'px'; d.style.top = Math.max(12, r.top - f.top - 10) + 'px'; pins.appendChild(d); });
   badges.innerHTML = '';
   if (state.mode === 'anatomy' && state.view === 'parts') {
-    const placed = [];
-    $$('[data-slot]', stage).forEach((el, i) => {
-      const r = el.getBoundingClientRect(); const cands = [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom], [r.left, (r.top + r.bottom) / 2], [r.right, (r.top + r.bottom) / 2]];
-      let pick = cands[0]; for (const c of cands) { const x = c[0] - f.left, y = c[1] - f.top; if (!placed.some((p) => Math.abs(p.x - x) < 24 && Math.abs(p.y - y) < 24)) { pick = c; break; } }
-      const x = pick[0] - f.left, y = pick[1] - f.top; placed.push({ x, y });
-      const b = document.createElement('div'); b.className = 'badge'; b.textContent = i + 1; b.style.left = x + 'px'; b.style.top = y + 'px'; badges.appendChild(b);
+    /* numbers sit in the margin beside the frame; a dotted leader runs from each number to its element */
+    const NS = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); svg.style.cssText = 'position:absolute;inset:0;overflow:visible';
+    const anchors = []; const fr = frame.getBoundingClientRect(); const mid = (fr.left + fr.right) / 2;
+    const items = $$('[data-slot]', stage).map((el, i) => {
+      /* each number goes in the margin on the side its element is nearest, so leaders stay short */
+      const r = el.getBoundingClientRect(); const side = (r.left + r.right) / 2 > mid + 1 ? 'right' : 'left';
+      let ax = side === 'left' ? r.left - f.left : r.right - f.left; const ay = r.top - f.top + Math.min(14, r.height / 2);
+      while (anchors.some((a) => Math.abs(a.x - ax) < 10 && Math.abs(a.y - ay) < 10)) ax += side === 'left' ? 12 : -12; /* nested parts share a corner: fan the end points out */
+      anchors.push({ x: ax, y: ay }); return { n: i + 1, side, ax, ay };
+    }).sort((a, b) => a.ay - b.ay || a.n - b.n);
+    const lastY = { left: -Infinity, right: -Infinity };
+    items.forEach((it) => {
+      const by = Math.max(it.ay, lastY[it.side] + 26); lastY[it.side] = by;
+      const bx = it.side === 'left' ? -22 : f.width - 22; const ex = it.side === 'left' ? bx + 11 : bx - 11;
+      const line = document.createElementNS(NS, 'polyline'); line.setAttribute('points', `${ex},${by} ${it.ax},${it.ay}`);
+      Object.entries({ fill: 'none', stroke: '#1c2026', 'stroke-width': '1.5', 'stroke-dasharray': '2 4', 'stroke-linecap': 'round' }).forEach(([k, v]) => line.setAttribute(k, v)); svg.appendChild(line);
+      const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('cx', it.ax); dot.setAttribute('cy', it.ay); dot.setAttribute('r', 3); dot.setAttribute('fill', '#1c2026'); svg.appendChild(dot);
+      const b = document.createElement('div'); b.className = 'badge'; b.textContent = it.n; b.style.left = bx + 'px'; b.style.top = by + 'px'; badges.appendChild(b);
     });
+    badges.prepend(svg);
   }
 }
 function updateStageTop() {
@@ -360,7 +375,7 @@ function toggleOriginal() {
 function discardDraft() { const keep = state.selected && selectorOf(state.selected); stage.innerHTML = state.original; state.draft = []; state.viewingOriginal = false; state.selected = keep ? resolve(keep) : null; drawOverlay(); updateStageTop(); renderPanel(); announce('Draft discarded'); }
 
 /* ---------- toolbar and controls ---------- */
-function syncModeClasses() { frame.classList.toggle('parts', state.mode === 'anatomy' && state.view === 'parts'); }
+function syncModeClasses() { const parts = state.mode === 'anatomy' && state.view === 'parts'; frame.classList.toggle('parts', parts); $('#fw').classList.toggle('gutter', parts); fit(); }
 function setMode(m) { state.mode = m; if (m === 'test') state.selected = null; hl.style.display = 'none'; syncModeClasses(); updateToolbar(); updateStageTop(); drawOverlay(); renderPanel(); announce(MODE_LABEL[m] + ' mode'); }
 $$('#modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 $$('#presets button').forEach((b) => b.addEventListener('click', () => setWidth(Number(b.dataset.w))));
