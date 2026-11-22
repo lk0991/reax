@@ -1,0 +1,124 @@
+/* Tokens fall back to literal values because the project defines none yet.
+   Replace the fallbacks once a token file exists (see gaps in the summary). */
+.reax-button {
+  --_bg: var(--button-bg, #2563eb);
+  --_fg: var(--button-fg, #ffffff);
+  --_border: var(--button-border, transparent);
+  --_bg-hover: var(--button-bg-hover, #1d4ed8);
+  --_bg-active: var(--button-bg-active, #1e40af);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  box-sizing: border-box;
+  min-block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border: 1px solid var(--_border);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--_bg);
+  color: var(--_fg);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.reax-button:hover { background: var(--_bg-hover); }
+.reax-button:active { background: var(--_bg-active); }
+
+.reax-button:focus-visible {
+  outline: 3px solid var(--focus-ring, #1d4ed8);
+  outline-offset: 2px;
+}
+
+/* Variants */
+.reax-button[data-variant='secondary'] {
+  --_bg: var(--button-secondary-bg, #ffffff);
+  --_fg: var(--button-secondary-fg, #1e3a8a);
+  --_border: var(--button-secondary-border, #1e3a8a);
+  --_bg-hover: var(--button-secondary-bg-hover, #eff6ff);
+  --_bg-active: var(--button-secondary-bg-active, #dbeafe);
+}
+.reax-button[data-variant='ghost'] {
+  --_bg: transparent;
+  --_fg: var(--button-ghost-fg, #1e3a8a);
+  --_bg-hover: var(--button-secondary-bg-hover, #eff6ff);
+  --_bg-active: var(--button-secondary-bg-active, #dbeafe);
+}
+
+/* Danger intent */
+.reax-button[data-intent='danger'] {
+  --_bg: var(--danger-bg, #b91c1c);
+  --_fg: #ffffff;
+  --_bg-hover: var(--danger-bg-hover, #991b1b);
+  --_bg-active: var(--danger-bg-active, #7f1d1d);
+}
+.reax-button[data-intent='danger'][data-variant='secondary'] {
+  --_bg: #ffffff;
+  --_fg: var(--danger-fg, #991b1b);
+  --_border: var(--danger-fg, #991b1b);
+  --_bg-hover: var(--danger-surface, #fef2f2);
+  --_bg-active: var(--danger-surface-active, #fee2e2);
+}
+.reax-button[data-intent='danger'][data-variant='ghost'] {
+  --_bg: transparent;
+  --_fg: var(--danger-fg, #991b1b);
+  --_bg-hover: var(--danger-surface, #fef2f2);
+  --_bg-active: var(--danger-surface-active, #fee2e2);
+}
+
+/* Sizes (rem so text scaling works) */
+.reax-button[data-size='sm'] {
+  min-block-size: 2rem;
+  min-inline-size: 2rem;
+  padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+  font-size: 0.875rem;
+}
+.reax-button[data-size='md'] { font-size: 1rem; }
+.reax-button[data-size='lg'] {
+  min-block-size: 3.25rem;
+  padding: var(--space-3, 0.75rem) var(--space-6, 1.5rem);
+  font-size: 1.125rem;
+}
+
+.reax-button[data-full-width] {
+  display: flex;
+  inline-size: 100%;
+}
+
+/* Parts */
+.reax-button__label { min-inline-size: 0; overflow-wrap: anywhere; }
+.reax-button__icon { display: inline-flex; flex: none; }
+
+.reax-button__spinner {
+  flex: none;
+  inline-size: 1em;
+  block-size: 1em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: reax-button-spin 700ms linear infinite;
+}
+@keyframes reax-button-spin { to { transform: rotate(360deg); } }
+
+/* States */
+.reax-button[data-loading] { cursor: progress; }
+.reax-button:disabled {
+  background: var(--disabled-bg, #e5e7eb);
+  color: var(--disabled-fg, #4b5563);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+@media (min-width: 40rem) {
+  .reax-button { padding-inline: var(--space-5, 1.25rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reax-button { transition: none; }
+  .reax-button__spinner { animation-duration: 2s; }
+}
