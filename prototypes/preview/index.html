@@ -340,20 +340,32 @@ function drawOverlay() {
     /* numbers sit in the margin beside the frame; a dotted leader runs from each number to its element */
     const NS = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); svg.style.cssText = 'position:absolute;inset:0;overflow:visible';
+    /* Each number sits in the margin on the side its element is nearest. The dotted leader runs out of the number, steps
+       vertically in a channel just outside the component, and enters the element's outer edge. Upper leaders take the outer
+       channels and lower ones the inner, and a number never sits above its element, so two leaders can never cross. */
+    const u = Math.max(0.35, state.scale); /* offsets and channel gaps shrink with the frame so they stay narrower than the gaps between parts */
     const anchors = []; const fr = frame.getBoundingClientRect(); const mid = (fr.left + fr.right) / 2;
+    const texts = $$('[data-slot]', stage).filter((e) => ['title', 'body', 'close', 'action'].includes(e.dataset.slot)).map((e) => { const r = e.getBoundingClientRect(); return { el: e, l: r.left - f.left, r: r.right - f.left, t: r.top - f.top, b: r.bottom - f.top }; });
     const items = $$('[data-slot]', stage).map((el, i) => {
-      /* each number goes in the margin on the side its element is nearest, so leaders stay short */
-      const r = el.getBoundingClientRect(); const side = (r.left + r.right) / 2 > mid + 1 ? 'right' : 'left';
-      let ax = side === 'left' ? r.left - f.left : r.right - f.left; const ay = r.top - f.top + Math.min(14, r.height / 2);
-      while (anchors.some((a) => Math.abs(a.x - ax) < 10 && Math.abs(a.y - ay) < 10)) ax += side === 'left' ? 12 : -12; /* nested parts share a corner: fan the end points out */
-      anchors.push({ x: ax, y: ay }); return { n: i + 1, side, ax, ay };
+      const r = el.getBoundingClientRect(); const L = r.left - f.left, R = r.right - f.left, y0 = r.top - f.top + Math.min(14 * u, r.height / 2);
+      /* the nearer margin, unless another part with text sits between it and this element (a button beside a button) */
+      const clear = (s) => !texts.some((t) => t.el !== el && t.t <= y0 && y0 <= t.b && (s === 'left' ? t.l < L && t.r <= L + 1 : t.r > R && t.l >= R - 1));
+      const nearest = (r.left + r.right) / 2 > mid + 1 ? 'right' : 'left'; const other = nearest === 'left' ? 'right' : 'left';
+      const side = clear(nearest) ? nearest : clear(other) ? other : nearest;
+      const ax = side === 'left' ? L : R;
+      /* parts that share a corner (header and title) enter the same edge at different heights */
+      const ys = [r.top - f.top + Math.min(14 * u, r.height / 2), r.bottom - f.top - Math.min(10 * u, r.height / 2), (r.top + r.bottom) / 2 - f.top];
+      const ay = ys.find((y) => !anchors.some((a) => a.side === side && Math.abs(a.y - y) < 10 * u && Math.abs(a.x - ax) < 40 * u)) ?? ys[0];
+      anchors.push({ side, x: ax, y: ay }); return { n: i + 1, side, ax, ay };
     }).sort((a, b) => a.ay - b.ay || a.n - b.n);
-    const lastY = { left: -Infinity, right: -Infinity };
+    const edge = { left: Math.min(...items.filter((i) => i.side === 'left').map((i) => i.ax)) - 8 * u, right: Math.max(...items.filter((i) => i.side === 'right').map((i) => i.ax)) + 8 * u };
+    const lastY = { left: -Infinity, right: -Infinity }; const used = { left: 0, right: 0 };
     items.forEach((it) => {
       const by = Math.max(it.ay, lastY[it.side] + 26); lastY[it.side] = by;
+      const k = used[it.side]++; const cx = it.side === 'left' ? Math.min(edge.left + 5 * u * k, it.ax - 6 * u) : Math.max(edge.right - 5 * u * k, it.ax + 6 * u);
       const bx = it.side === 'left' ? -22 : f.width - 22; const ex = it.side === 'left' ? bx + 11 : bx - 11;
-      const line = document.createElementNS(NS, 'polyline'); line.setAttribute('points', `${ex},${by} ${it.ax},${it.ay}`);
-      Object.entries({ fill: 'none', stroke: '#1c2026', 'stroke-width': '1.5', 'stroke-dasharray': '2 4', 'stroke-linecap': 'round' }).forEach(([k, v]) => line.setAttribute(k, v)); svg.appendChild(line);
+      const line = document.createElementNS(NS, 'polyline'); line.setAttribute('points', `${ex},${by} ${cx},${by} ${cx},${it.ay} ${it.ax},${it.ay}`); line.setAttribute('data-n', it.n);
+      Object.entries({ fill: 'none', stroke: '#1c2026', 'stroke-width': '1.5', 'stroke-dasharray': '2 4', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => line.setAttribute(k, v)); svg.appendChild(line);
       const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('cx', it.ax); dot.setAttribute('cy', it.ay); dot.setAttribute('r', 3); dot.setAttribute('fill', '#1c2026'); svg.appendChild(dot);
       const b = document.createElement('div'); b.className = 'badge'; b.textContent = it.n; b.style.left = bx + 'px'; b.style.top = by + 'px'; badges.appendChild(b);
     });
@@ -501,7 +513,7 @@ function anatomyPanel() {
   const tabs = ['parts', 'props', 'tokens', 'accessibility'];
   let h = `<h3>Anatomy</h3><div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" data-view="${t}" aria-selected="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
   const slots = $$('[data-slot]', stage);
-  if (state.view === 'parts') h += `<p class="note">Numbers on the frame match this list.</p><table><tr><th>#</th><th>slot</th><th>element</th><th>role</th></tr>${slots.map((e, i) => `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code></td><td>${e.tagName.toLowerCase()}</td><td>${roleOf(e)}</td></tr>`).join('')}</table>`;
+  if (state.view === 'parts') h += `<p class="note">Numbers on the frame match this list.</p><table><tr><th>#</th><th>slot</th><th>element</th><th>role</th></tr>${slots.map((e, i) => `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code>${isTarget(e) || e.tagName === 'H2' ? `<div class="note">“${esc(nameOf(e))}”</div>` : ''}</td><td>${e.tagName.toLowerCase()}</td><td>${roleOf(e)}</td></tr>`).join('')}</table>`;
   if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent.slice(0, 40) + '…')], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><table><tr><th>prop</th><th>type</th><th>value</th></tr>${rows.map((r) => `<tr><td><code>${r[0]}</code></td><td>${esc(r[1])}</td><td><code>${esc(r[2])}</code></td></tr>`).join('')}</table>`; }
   if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? selectedCard() : '<p class="note">Showing the dialog. Click an element to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
   if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<table><tr><th>#</th><th>slot</th><th>role</th><th>name</th><th>size</th></tr>${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code></td><td>${roleOf(e)}</td><td>${esc(nameOf(e)) || '<em>none</em>'}</td><td>${isTarget(e) ? `<span class="tag" style="${bad ? 'background:var(--bad-wash);color:var(--bad)' : ''}">${w}×${hh}${bad ? ' too small' : ''}</span>` : '–'}</td></tr>`; }).join('')}</table><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
