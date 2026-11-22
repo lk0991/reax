@@ -1,0 +1,68 @@
+{
+  "mobile-390x844": {
+    "overflowX": 0,
+    "dialog": {
+      "dialogRight": 448,
+      "footerRight": 428,
+      "vw": 390,
+      "closeSize": [
+        20,
+        20
+      ]
+    }
+  },
+  "axe": [
+    {
+      "id": "aria-dialog-name",
+      "impact": "serious",
+      "help": "ARIA dialog and alertdialog nodes should have an accessible name",
+      "nodes": [
+        "#confirm-dialog"
+      ]
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "help": "Buttons must have discernible text",
+      "nodes": [
+        ".close"
+      ]
+    }
+  ],
+  "desktop-1280x800": {
+    "overflowX": 0,
+    "dialog": {
+      "dialogRight": 920,
+      "footerRight": 900,
+      "vw": 1280,
+      "closeSize": [
+        20,
+        20
+      ]
+    }
+  },
+  "reflow-320": {
+    "overflowX": 0,
+    "dialog": {
+      "dialogRight": 448,
+      "footerRight": 428,
+      "vw": 320,
+      "closeSize": [
+        20,
+        20
+      ]
+    }
+  },
+  "text-200": {
+    "overflowX": 0,
+    "dialog": {
+      "dialogRight": 448,
+      "footerRight": 428,
+      "vw": 390,
+      "closeSize": [
+        20,
+        20
+      ]
+    }
+  }
+}
