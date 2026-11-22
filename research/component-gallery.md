@@ -142,6 +142,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - GOV.UK Warning text is a smaller pattern: a `govuk-warning-text` block, no severity variants shown in what I extracted. https://design-system.service.gov.uk/components/warning-text/
 - Variant-set disagreement: severity names differ (Bootstrap "danger", Chakra/Ant "error", shadcn "destructive", Primer "critical", Atlassian "error" plus "discovery", Primer "upsell"). The shared core across Chakra, Ant, Primer and Atlassian is info, success, warning, error (critical in Primer); extras are neutral (Chakra), discovery (Atlassian), upsell (Primer). Visual style is a second axis in Chakra (4 values) and Ant (2 values), absent in Primer, Atlassian and shadcn.
 - Presentation options that recur: dismissible/closable (Chakra close button example, Ant `closable`, Primer `onDismiss`, Bootstrap dismiss), actions (Ant `action`, Primer primary/secondary, Atlassian `actions`), custom icon (Chakra, Ant, Primer), title plus description (Ant, Primer, Atlassian).
+- Carbon Notification: four variants, "toast, inline, actionable, and callout"; four statuses (Informational, Success, Warning, Error), with callout available only for Informational and Warning; anatomy is icon, title, body content, close button, plus action button (actionable) or link (callout); callouts "cannot be dismissed". Toasts are "time-based" and "disappear after a few seconds". Accessibility: actionable notifications grab and trap focus until dismissed. https://www.carbondesignsystem.com/components/notification/usage/ and https://www.carbondesignsystem.com/components/notification/accessibility/
+- Polaris Banner (shopify.dev): `tone` "auto" | "info" | "success" | "warning" | "critical" (default 'auto'), `heading`, `dismissible`, `hidden`, events `dismiss` and `afterhide`, slots `children` and `secondary-actions`; limitations list says banners are not sticky and dismissed state is not persisted. https://shopify.dev/docs/api/app-home/web-components/feedback-and-status-indicators/banner.md
+- React Spectrum InlineAlert: `variant` 'neutral' | 'info' | 'positive' | 'notice' | 'negative' (default 'neutral'); "include an icon for non-neutral variants"; `autoFocus`. https://react-spectrum.adobe.com/react-spectrum/InlineAlert.html
+- Material 3: no Alert component in the pages read. Messages are split by priority between Snackbar ("low priority", "minimally interruptive", at most one at a time, a single action) and Dialog ("high priority", blocks the app until an action is taken). https://m3.material.io/components/snackbar/guidelines and https://m3.material.io/components/dialogs/guidelines
+- New variant-set disagreements: Carbon and Material split inline status messages, transient toasts and blocking dialogs into separate components by lifespan; Primer, Atlassian and Polaris keep one banner-like component with a tone axis. Polaris and Primer use "critical"; Carbon uses "Error" (with Warning and Informational); Spectrum uses "negative" and "notice".
 
 ### 3.2 Spinner (66 examples, 58 design systems; added, tier A)
 
@@ -151,6 +156,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Primer Spinner: `size` 'small' | 'medium' | 'large'; `srText` (string or null); `delay` (boolean | 'short' | 'long' | number). https://primer.style/design/components/spinner
 - Bootstrap 4.3 Spinner: two types, `.spinner-border` and `.spinner-grow`; colours via text utilities; small size variant; each includes `role="status"` and a nested `<span class="sr-only">Loading...</span>`. https://getbootstrap.com/docs/4.3/components/spinners/
 - Agreement: size scale; an accessible label (Primer `srText`, Bootstrap sr-only text, Chakra Label example). Disagreement: delay before showing exists in Ant and Primer only; Chakra size has 6 steps, Primer 3, Ant 3.
+- Carbon Loading: sizes large (default) and small; states "inactive and active"; guidance "Use a loading indicator if the expected wait time exceeds three seconds"; Inline loading is a separate component. Accessibility: `aria-live` set to "assertive", completion must be announced separately. https://www.carbondesignsystem.com/components/loading/usage/ and https://www.carbondesignsystem.com/components/loading/accessibility/
+- Polaris Spinner: `size` "base" | "large" | "large-100" (default 'base'), `accessibilityLabel`. https://shopify.dev/docs/api/app-home/web-components/feedback-and-status-indicators/spinner.md
+- React Spectrum ProgressCircle: `isIndeterminate`, `value`/`minValue`/`maxValue`, `size` 'S' default, `staticColor` 'white' | 'black'; the sidebar of the Spectrum docs shows no separate spinner (Status section: Badge, InlineAlert, LabeledValue, Meter, ProgressBar, ProgressCircle, StatusLight, Toast), so an indeterminate ProgressCircle serves as the loading indicator (inference). https://react-spectrum.adobe.com/react-spectrum/ProgressCircle.html
+- Material 3 treats the circular progress indicator as the loading indicator: "Instant (under 200ms): No indicator", "Short (between 200ms and 5s): Use a loading indicator", "Long (over 5s): Use a progress indicator". https://m3.material.io/components/progress-indicators/guidelines
+- Disagreement on the wait threshold: Carbon says show a loading indicator when the wait exceeds three seconds; Material says 200ms to 5s gets a loading indicator and over 5s a progress indicator.
 
 ### 3.3 Toggle / Switch (60 examples, 58 design systems; added, tier A)
 
@@ -160,6 +170,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Ant Design Switch: `checked`, `defaultChecked`, `disabled`, `loading`, `size` 'medium' | 'small', `checkedChildren`, `unCheckedChildren`. https://ant.design/components/switch
 - Primer ToggleSwitch: `checked`, `defaultChecked`, `disabled`, `loading`, `size` 'small' | 'medium', `statusLabelPosition` 'start' | 'end', `loadingLabelDelay` (2000), `buttonLabelOn`/`buttonLabelOff` ('On'/'Off'). Examples: default, caption, custom size. https://primer.style/design/components/toggle-switch
 - States seen in more than one system: checked/unchecked, disabled (Radix, React Aria, Ant, Primer), loading (Ant, Primer), read-only and invalid (React Aria only). Variant sets are small: size small/medium (Ant, Primer) and optional on/off labels (Ant children, Primer status labels).
+- Carbon Toggle: variants "Default toggle" (label plus state text) and "Small toggle" (no label or state text); states on, off, focus, disabled, read-only, skeleton; implemented as a button with role switch, "On" and "Off" text is aria-hidden and `aria-checked` carries state. https://www.carbondesignsystem.com/components/toggle/usage/ and https://www.carbondesignsystem.com/components/toggle/accessibility/
+- Polaris Switch: `checked`, `defaultChecked`, `disabled`, `required`, `label`, `details`, `error`, `labelAccessibilityVisibility` ("visible" | "exclusive"), `name`, `value`. https://shopify.dev/docs/api/app-home/web-components/forms/switch.md
+- React Spectrum Switch: `isSelected`, `defaultSelected`, `isEmphasized`, `isDisabled`, `isReadOnly`, `isRequired`, `isInvalid`; the page states "Switches, unlike checkboxes, can't have an error state", although the props table lists `isInvalid`. https://react-spectrum.adobe.com/react-spectrum/Switch.html
+- Material 3 Switch: states in the specs are Enabled, Disabled, Hovered, Focused, Pressed; guidance "Use switches (not radio buttons) if the items in a list can be independently controlled"; "The effects of a switch should start immediately, without needing to save"; for opposing options use a connected button group. https://m3.material.io/components/switch/specs and https://m3.material.io/components/switch/guidelines
+- New disagreement: whether a switch can be invalid or required. Polaris, React Aria and Spectrum accept required/invalid props; Spectrum's own prose says switches cannot have an error state. Carbon alone has a small variant with no label and a skeleton state.
 
 ### 3.4 Link (64 examples, 55 design systems; added, tier A)
 
@@ -167,6 +182,10 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Chakra UI Link: `variant` 'underline' | 'plain' (default 'plain'), `colorPalette`. https://chakra-ui.com/docs/components/link
 - Primer Link: `href`, `muted` (false), `inline` (false), `hoverColor`, `as`. https://primer.style/design/components/link
 - Variant-set disagreement: the only documented variants are underline vs plain (Chakra) and muted/inline flags (Primer). Not read: Carbon, Spectrum, Polaris, Fluent, Base Web, Pajamas link pages.
+- Carbon Link: variants "Standalone" (no underline, can pair with an icon) and "Inline" (underlined, no icon); sizes small 16px, medium 18px, large 22px; six states: enabled (unvisited), hover, focus, active, visited, disabled. https://www.carbondesignsystem.com/components/link/usage/
+- Polaris Link: `href`, `target`, `tone` "auto" | "neutral" | "critical", `download`, `accessibilityLabel`, `command`/`commandFor`. https://shopify.dev/docs/api/app-home/web-components/actions/link.md
+- React Spectrum Link: `variant` 'primary' | 'secondary' | 'overBackground' (default 'primary'), `isQuiet`, `href`, `target`. https://react-spectrum.adobe.com/react-spectrum/Link.html
+- Variant-set disagreement: Carbon splits by context (standalone vs inline), Chakra by underline (underline vs plain), Spectrum by background (primary/secondary/overBackground), Polaris by tone (neutral/critical). Only Carbon documents a visited state in what was read.
 
 ### 3.5 Breadcrumbs (55 examples, 55 design systems; added, tier A)
 
@@ -177,6 +196,10 @@ Each bullet names the design system, what the page documents, and the page URL i
 - GOV.UK: `<nav class="govuk-breadcrumbs" aria-label="Breadcrumb">` containing an `<ol class="govuk-breadcrumbs__list">`. https://design-system.service.gov.uk/components/breadcrumbs/
 - Bootstrap 4.3: `<nav aria-label="breadcrumb">` with `.breadcrumb-item`, and `.active` plus `aria-current="page"` on the last item. https://getbootstrap.com/docs/4.3/components/breadcrumb/
 - Agreement: landmark `nav` with a label and a marker on the current page (aria-current or isCurrent). Optional: custom separator (Ant, Chakra), collapse/ellipsis (Chakra anatomy), overflow menu on an item (Ant `menu`).
+- Carbon Breadcrumb: variants "Location-based" and "Path-based" (always dynamically generated); sizes small and medium; "By default, Carbon breadcrumb trails should not include the current page"; overflow truncates behind an ellipsis menu button; links are list items. https://www.carbondesignsystem.com/components/breadcrumb/usage/ and https://www.carbondesignsystem.com/components/breadcrumb/accessibility/
+- React Spectrum Breadcrumbs: `isDisabled`; the page documents it as a navigation component. https://react-spectrum.adobe.com/react-spectrum/Breadcrumbs.html
+- Polaris: no breadcrumb entry in the app-home web components index (https://shopify.dev/docs/api/app-home/web-components). Material 3: no breadcrumb page was among the pages fetched (unverified whether one exists).
+- Disagreement: whether the current page appears in the trail. Carbon's default is to omit it and, if shown, it is not a link; Bootstrap 4.3's markup includes it as the last item with `aria-current="page"`.
 
 ### 3.6 Textarea (52 examples, 52 design systems; added, tier A)
 
@@ -186,6 +209,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - GOV.UK: `<textarea class="govuk-textarea" rows="5" aria-describedby="...-hint">` with a label and hint; "You must label textareas. Placeholder text is not a suitable substitute for a label". https://design-system.service.gov.uk/components/textarea/
 - React Aria TextField (covers single and multi-line text fields): states disabled, invalid, read-only, required. https://react-aria.adobe.com/TextField
 - Shared concerns: resize behaviour (Primer), auto-grow (Primer `autoSize`), character limit (Primer, GOV.UK has a separate Character count component per its menu; its page was not read), validation status (Primer, React Aria).
+- Carbon: no standalone Text area page; it is a variant of Text input ("Text input" for a single line, "Text area" for "more than a few words that could span multiple lines"), with a resize handle section; sizes xs 24px, sm 32px, md 40px, lg 48px (text input); states enabled, active, focus, error, warning, disabled, skeleton, read-only. https://www.carbondesignsystem.com/components/text-input/usage/ (https://www.carbondesignsystem.com/components/text-area/usage/ returns 404).
+- Polaris TextArea: `rows` (default 2), `minLength`, `maxLength`, `placeholder`, `readOnly`, `required`, `disabled`, `error`, `details`, `label`, `labelAccessibilityVisibility`. https://shopify.dev/docs/api/app-home/web-components/forms/text-area.md
+- React Spectrum TextArea: `isQuiet`, `isDisabled`, `isReadOnly`, `isRequired`, `validationState`, `labelPosition`, `labelAlign`, `necessityIndicator` ('icon' by default). https://react-spectrum.adobe.com/react-spectrum/TextArea.html
+- Material 3: text field variants are "Filled text fields" and "Outlined text fields", "Both variants ... provide the same functionality"; no separate multi-line page read. https://m3.material.io/components/text-fields/guidelines
+- Disagreement: separate component (Chakra, Primer, Polaris, Spectrum) vs variant of text input (Carbon). Visual variant sets: Chakra outline/subtle/flushed; Material filled/outlined; Spectrum quiet flag.
 
 ### 3.7 Popover (50 examples, 48 design systems; added, tier A)
 
@@ -196,6 +224,12 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Primer: `open`, `caret` (12 positions), `width` ('xsmall' to 'xlarge' | 'auto'), `height`, `overflow`, `onClickOutside`, `onEscape`. https://primer.style/design/components/popover
 - React Aria Popover: states entering, exiting, `placement` ([data-placement]) and trigger. https://react-aria.adobe.com/Popover
 - Disagreement on scope: Ant folds a confirm variant (Popconfirm) into the same family; Radix treats modal vs non-modal as a boolean; Primer's popover is a caret-bearing callout with explicit width presets.
+- Carbon Popover: variants by tip: "No tip", "Caret tip", "Tab tip" (for a toolbar or header). https://www.carbondesignsystem.com/components/popover/usage/
+- Polaris Popover: sizing props only (`inlineSize`, `blockSize`, min/max); best-practice text: "Use for secondary or less important information and actions since they're hidden until triggered". https://shopify.dev/docs/api/app-home/web-components/overlays/popover.md
+- React Spectrum: no Popover page (404); overlays are DialogTrigger with `type` 'modal' | 'popover' | 'tray' | 'fullscreen' | 'fullscreenTakeover', `mobileType`, `placement` ('bottom'), `shouldFlip`, `isDismissable`, `isKeyboardDismissDisabled`. https://react-spectrum.adobe.com/react-spectrum/DialogTrigger.html
+- Material 3: no popover page in the components read; plain and rich tooltips (see 4) and menus cover the cases. https://m3.material.io/components/tooltips/guidelines
+- Ariakit (Popover, Hovercard): not reached.
+- Naming disagreement: Spectrum folds popover into DialogTrigger type, Ant folds Popconfirm in, Carbon has Popover and a separate Toggletip.
 
 ### 3.8 Progress bar (40 examples, 38 design systems; added, tier B)
 
@@ -207,6 +241,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Bootstrap 4.3: `.progress-bar` inside `.progress`, `role="progressbar"` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax`; options height, striped, animated stripes, stacked bars. https://getbootstrap.com/docs/4.3/components/progress/
 - React Aria ProgressBar: indeterminate is `:not([aria-valuenow])`; `valueText` maps to aria-valuetext. https://react-aria.adobe.com/ProgressBar
 - Agreement: determinate vs indeterminate and an accessible value. Disagreement: Ant folds circular and dashboard shapes into the same component; Chakra splits Progress Circle out; Ant has an explicit status (exception/success), others derive it from colour or state.
+- Carbon Progress bar: variants Determinate and Indeterminate; statuses "active, success, and error"; sizes big (8px) and small (4px); progress status examples Downloading, Uploading, Data processing. https://www.carbondesignsystem.com/components/progress-bar/usage/
+- Polaris Progress: `value` (default 0), `max` (default 1), `tone` "auto" | "neutral" | "info" | "success" | "caution" | "warning" | "critical", `accessibilityLabel`. https://shopify.dev/docs/api/app-home/web-components/feedback-and-status-indicators/progress.md
+- React Spectrum ProgressBar: `value`, `minValue` 0, `maxValue` 100, `isIndeterminate`, `labelPosition` ('top'), `showValueLabel`; Meter is a separate component with `variant` 'informative' | 'positive' | 'warning' | 'critical' and `size` 'S' | 'L'. https://react-spectrum.adobe.com/react-spectrum/ProgressBar.html and https://react-spectrum.adobe.com/react-spectrum/Meter.html
+- Material 3 Progress indicators: variants Linear and Circular, determinate or indeterminate; anatomy active indicator, track, stop indicator; "A process should be represented by the same variant of progress indicator throughout the product". https://m3.material.io/components/progress-indicators/guidelines
+- Disagreement: a status axis exists in Carbon (active/success/error), Polaris (tone, 7 values) and Ant (status); Chakra and Material have none. Meter (static measurement) is split from progress in Spectrum, and the gallery lists "Meter" as an alias of Progress indicator.
 
 ### 3.9 Slider (38 examples, 37 design systems; added, tier B)
 
@@ -216,6 +255,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Ant Design: `range` (dual thumb), `marks`, `dots`, `included`, `reverse`, `vertical`/`orientation`, `tooltip`, `keyboard`, `disabled` (also an array for per-handle disabling), `onChangeComplete`. https://ant.design/components/slider
 - React Aria Slider: states disabled, dragging, hovered, focused, focus-visible; orientation attribute. https://react-aria.adobe.com/Slider
 - Shared: single vs range selection, orientation, step with keyboard larger step (Chakra), tick marks (Chakra, Ant). The "Range" alias in Atlassian and the HTML `range` input explain why "Range" and "Slider" both appear.
+- Carbon Slider: variants "Default slider" and "Range slider"; states enabled, hover, focus, active, error, warning, disabled, read-only, skeleton; keyboard: arrow keys, Shift + arrow for larger step, paired number inputs in the tab order; "A value of '1' is recommended" for step. https://www.carbondesignsystem.com/components/slider/usage/ and https://www.carbondesignsystem.com/components/slider/accessibility/
+- React Spectrum: separate Slider (`isFilled`, `orientation`, `minValue`, `maxValue`, `labelPosition`, `showValueLabel`) and RangeSlider (value as RangeValue). https://react-spectrum.adobe.com/react-spectrum/Slider.html and https://react-spectrum.adobe.com/react-spectrum/RangeSlider.html
+- Material 3 Sliders: three variants "standard, centered, and range", each horizontal or vertical; "Avoid using range sliders vertically"; "Changes made with sliders must take effect immediately"; optional value indicator, stop indicators, inset icon. https://m3.material.io/components/sliders/guidelines
+- Polaris: no Slider in the app-home web components index (https://shopify.dev/docs/api/app-home/web-components).
+- Disagreement: range as a prop (Ant `range`, Radix array value) vs a separate component (Spectrum RangeSlider) vs a variant (Carbon, Material). Only Material has a centered variant.
 
 ### 3.10 Date picker (44 examples, 36 design systems; added, tier B)
 
@@ -224,6 +268,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - React Aria DatePicker: `granularity`, `hourCycle` (12 | 24), `isDateUnavailable`, `placeholderValue`, `shouldForceLeadingZeros`, `hideTimeZone`, `firstDayOfWeek`; states open, invalid, disabled, read-only, required, focus-within. https://react-aria.adobe.com/DatePicker
 - shadcn/ui documents this as Calendar (name disagreement with "Date picker"): https://ui.shadcn.com/docs/components/calendar (page fetched; props not read).
 - Disagreement: whether range selection, time selection and week/month/year modes belong in one component (Ant) or in separate ones (React Aria has DateField, DatePicker, DateRangePicker and Calendar as separate pages, unverified count).
+- Carbon Date picker: variants "Simple date input", "Calendar picker" (single or range), "Time picker"; input heights small 32px, medium 40px, large 48px; the date input has the same states as text input. https://www.carbondesignsystem.com/components/date-picker/usage/
+- Polaris DatePicker: `type` "single" | "range", `value` (YYYY-MM-DD, or YYYY-MM-DD--YYYY-MM-DD for ranges), `allow`, `disallow`, `allowDays`, `disallowDays`, `view`, `defaultView`, `visibleMonths` "auto" | "1" | "2", events `change`, `viewchange`; Polaris also has a separate DateField. https://shopify.dev/docs/api/app-home/web-components/forms/date-picker.md
+- Material 3 Date pickers: three variants "Docked date picker", "Modal date picker", "Modal date input" (plus a full-screen range picker); a separate time picker page exists. https://m3.material.io/components/date-pickers/guidelines
+- React Spectrum DatePicker and Calendar pages exist (https://react-spectrum.adobe.com/react-spectrum/DatePicker.html); props not extracted.
+- Disagreement: Carbon bundles time picker with date picker, Material separates them; Ant uses `picker` for week/month/quarter/year while Polaris uses `type` for single vs range only.
 
 ### 3.11 Combobox (37 examples, 35 design systems; added, tier B)
 
@@ -232,6 +281,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - React Aria ComboBox: `allowsCustomValue`, `allowsEmptyCollection`, `menuTrigger` (default 'input'), `defaultFilter`, `inputValue`, `items`; states open, disabled, invalid, read-only, required. https://react-aria.adobe.com/ComboBox
 - Headless UI Combobox: `data-open`, `data-focus`, `data-selected` states on options; `Field disabled` disables the combobox and its label and description; `anchor` for popup position. https://headlessui.com/react/combobox
 - Disagreement: whether free-text values are allowed (React Aria `allowsCustomValue`, Primer `addNewItem`) and single vs multiple selection (Primer `selectionVariant`).
+- Carbon: Combo box is a variant of Dropdown ("Dropdown", "Multiselect", "Combo box": "select an option from a large list or type in their own custom value"); sizes xs 24, sm 32, md 40, lg 48 px; states enabled, hover, focus, error, warning, disabled, skeleton, read-only. https://www.carbondesignsystem.com/components/dropdown/usage/ (a /components/combo-box/ page returns 404).
+- React Spectrum ComboBox: `allowsCustomValue`, `menuTrigger` ('input'), `loadingState`, `isQuiet`, `validationState`, `disabledKeys`; separate Picker and SearchAutocomplete. https://react-spectrum.adobe.com/react-spectrum/ComboBox.html
+- Polaris: no combobox in the app-home components index; Select, ChoiceList and SearchField exist. https://shopify.dev/docs/api/app-home/web-components
+- Ariakit Combobox: not reached.
+- Naming disagreement: Carbon calls the control a Dropdown variant, Ant Auto complete, Primer Autocomplete, Spectrum ComboBox/Picker/SearchAutocomplete (three components).
 
 ### 3.12 Progress indicator / Stepper (38 examples, 34 design systems; added, tier B)
 
@@ -239,6 +293,9 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Ant Design Steps: `current`, `status` (wait | process | finish | error), `type` (default | dot | inline | navigation | panel), `direction`/`orientation`, `titlePlacement`, `size`, `variant` (filled | outlined), `percent`, `maxCount`, `onChange`, `items`. https://ant.design/components/steps
 - Chakra UI Steps: `variant` 'solid' | 'subtle', `size` 'xs' to 'lg', `orientation`, `count`, `linear`, `defaultStep`, `isStepValid`, `isStepSkippable`, `onStepChange`; sections Colors, Controlled, Sizes, Vertical. https://chakra-ui.com/docs/components/steps
 - Variant-set disagreement: Ant has five layout types (default, dot, inline, navigation, panel) and four step statuses; Chakra models linear/non-linear navigation and step validity instead of statuses.
+- Carbon Progress indicator: seven states "completed, current, not started, error, disabled, hover, and focus"; vertical or horizontal alignment ("When possible, arrange the progress indicator vertically"); keyboard and validation sections. https://www.carbondesignsystem.com/components/progress-indicator/usage/
+- Material 3: the nearest page is Progress indicators (linear/circular), which measure a process, not steps; no stepper page was read (unverified that none exists). https://m3.material.io/components/progress-indicators/guidelines
+- Polaris: no stepper in the app-home components index (https://shopify.dev/docs/api/app-home/web-components). React Spectrum: none in the sidebar sections I saw on https://react-spectrum.adobe.com/react-spectrum/Switch.html (Navigation, Overlays, Pickers, Status, Content; the Forms and Actions sections were partly cut off, so this is unverified).
 
 ### 3.13 Separator / Divider (34 examples, 34 design systems; added, tier B)
 
@@ -247,6 +304,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Chakra: `variant` 'solid' | 'dashed' | 'dotted', `orientation`, `size` 'xs' to 'lg'. https://chakra-ui.com/docs/components/separator
 - Ant: `variant` dashed | dotted | solid, `orientation` or `vertical`, `titlePlacement` (start | end | center), `plain`, `size`. https://ant.design/components/divider
 - Key distinction: decorative vs semantic (Radix `decorative`). Only Ant supports a labelled divider (title text).
+- Polaris Divider: `direction` "inline" | "block", `color` "base" | "strong". https://shopify.dev/docs/api/app-home/web-components/layout-and-structure/divider.md
+- React Spectrum Divider: `orientation` ('horizontal'), `size` 'S' default. https://react-spectrum.adobe.com/react-spectrum/Divider.html
+- Material 3 Divider: two ways, "Full width" and "Inset", plus a vertical divider; "Use full-width dividers sparingly. Too many divider lines will make an interface look cluttered". https://m3.material.io/components/divider/guidelines
+- Carbon: no Divider in its components list. https://www.carbondesignsystem.com/components/notification/usage/ (sidebar).
+- Naming disagreement within one system: Polaris `direction` inline/block vs Radix/Chakra/Spectrum `orientation` horizontal/vertical.
 
 ### 3.14 Drawer (38 examples, 33 design systems; added, tier B)
 
@@ -254,6 +316,10 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Chakra UI Drawer: `placement` 'start' | 'end' | 'top' | 'bottom' (default 'end'), `size` 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full', `role` 'dialog' | 'alertdialog', `modal`, `trapFocus`, `closeOnEscape`, `closeOnInteractOutside`, `preventScroll`, `lazyMount`. https://chakra-ui.com/docs/components/drawer
 - Ant Design Drawer: `placement` top | right | bottom | left, `size` 'default' (378px) | 'large' (736px) | number, `mask`, `maskClosable`, `closable`, `keyboard`, `push` (nested drawers), `resizable`, `loading` (shows a Skeleton), `extra`, `footer`, `focusable`. https://ant.design/components/drawer
 - Pattern: drawer is a dialog variant anchored to an edge (Chakra exposes the dialog role); logical placements start/end (Chakra) vs physical left/right (Ant).
+- Material 3 Side sheets: "Standard side sheet" (stays visible beside primary content, medium to expanded breakpoints) and "Modal side sheet" (preferred on compact breakpoints, must be dismissed). Bottom sheets are a separate page. https://m3.material.io/components/side-sheets/guidelines
+- React Spectrum: tray is a DialogTrigger `type` ('tray'). https://react-spectrum.adobe.com/react-spectrum/DialogTrigger.html
+- Carbon: no drawer component in its list (UI shell left and right panels instead); Polaris: no drawer in app-home index (modal only).
+- Naming disagreement: Drawer/Sheet/Tray/Panel are five names for one idea; Material separates standard (non-modal) from modal, which Chakra expresses through `modal` and Ant through `mask`.
 
 ### 3.15 Button group (35 examples, 32 design systems; added, tier B)
 
@@ -261,6 +327,11 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Bootstrap 4.3: `.btn-group` wrapping `.btn`; sizing, vertical variation (`.btn-group-vertical`), and `.btn-toolbar` for combining groups; `role="group"` or `role="toolbar"` with an explicit label via aria-label. https://getbootstrap.com/docs/4.3/components/button-group/
 - Primer ButtonGroup: page fetched; its props table listed only `ref`. https://primer.style/design/components/button-group
 - Disagreement: whether grouping is purely visual (Bootstrap, Primer) or carries selection semantics (shadcn Toggle Group, gallery's Segmented control page).
+- Polaris ButtonGroup: `gap` "base" | "none", `accessibilityLabel`, slots `primary-action` and `secondary-actions`. https://shopify.dev/docs/api/app-home/web-components/actions/button-group.md
+- React Spectrum: ButtonGroup (`isDisabled`, `orientation`) and ActionGroup (`isEmphasized`, `isJustified`, `isQuiet`, `orientation`, `selectionMode`, `disabledKeys`). https://react-spectrum.adobe.com/react-spectrum/ButtonGroup.html and https://react-spectrum.adobe.com/react-spectrum/ActionGroup.html
+- Material 3 Button groups: "two variants of button groups: standard and connected"; in a standard group a selected button "changes shape and width"; sizes XS to XL. https://m3.material.io/components/button-groups/guidelines
+- Carbon: no button group in its list; Content switcher is the nearest.
+- Disagreement: purely layout (Polaris gap, Bootstrap, Primer) vs selection-aware (Spectrum ActionGroup `selectionMode`, Material connected group, shadcn Toggle Group).
 
 ### 3.16 Skeleton (30 examples, 30 design systems; added, tier B)
 
@@ -268,6 +339,9 @@ Each bullet names the design system, what the page documents, and the page URL i
 - Chakra UI: `variant` 'pulse' | 'shine' | 'none' (default 'pulse'), `loading` (default true). https://chakra-ui.com/docs/components/skeleton
 - Ant Design: `active` (animation), `avatar`, `title`, `paragraph` (`rows`, `width`), `round`, `loading`; sub-components Skeleton.Avatar (`shape` circle | square, `size`), Skeleton.Button (`shape`, `block`, `size`), Skeleton.Input (`size`). https://ant.design/components/skeleton
 - Agreement: animation on/off. Disagreement: Chakra wraps arbitrary content and toggles `loading`; Ant offers content-shaped presets (avatar, title, paragraph).
+- Carbon: Skeleton appears as a state, not a component: toggle, slider, text input, dropdown and tag each list "skeleton" among their states. https://www.carbondesignsystem.com/components/toggle/usage/ and https://www.carbondesignsystem.com/components/slider/usage/
+- Material 3, Polaris, React Spectrum: no skeleton component in the pages and indexes read.
+- Disagreement: component (Chakra, Ant, shadcn, Fluent Shimmer, Pajamas) vs component state (Carbon).
 
 ### 3.17 Components with gallery data only (no design-system page read)
 
