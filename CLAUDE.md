@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-GitHub Issues in `lk0991/react-skill`, accessed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub Issues in `lk0991/reax`, accessed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 

@@ -1,4 +1,4 @@
-# react-skill
+# reax
 
 A repository that ships an agent skill for generating, reviewing, and visually testing React UI components. The skill is shared from this repo.
 
