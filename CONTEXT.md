@@ -24,6 +24,10 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Visual test**: The automated checks on a component's Storybook stories, run with Playwright: a screenshot pixel comparison and an accessibility scan. It writes a text report with a list of improvements, and can open the Preview afterwards.
 
+**Capture**: One screenshot of a story at one width and text size. A visual test takes four per story: 390 pixels wide, 1280 wide, 320 wide to check reflow, and 390 wide with text at 200%.
+
+**Baseline**: The approved reference captures that a later visual test is compared with. A person approves them, and only after the visual review has passed. A first run with no baseline fails nothing.
+
 **Preview**: The local live page, opened from the visual test, where a person uses a built component by hand. It has four modes (test, comment, anatomy, edit), a resizable frame, and a sweep that finds the narrowest width at which the component still works. It is generated into a scratch folder and never committed.
 
 **Comment**: A note a person attaches to a selected element in the Preview. It records the text, the story, the viewport and text scale, the element's selector, role, accessible name, position and size, a cropped screenshot, and a status (open, addressed, resolved). Only the person marks a comment resolved.
