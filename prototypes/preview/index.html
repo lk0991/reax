@@ -75,7 +75,7 @@
   #overlay { position:absolute; inset:0; pointer-events:none; }
   #hl { position:absolute; display:none; border:2px dashed var(--accent); background:var(--accent-wash); z-index:3; }
   #sel { position:absolute; display:none; border:2px solid var(--accent); z-index:4; }
-  .badge { position:absolute; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); z-index:5; font-variant-numeric:tabular-nums; }
+  .badge { pointer-events:auto; cursor:pointer; position:absolute; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); z-index:5; font-variant-numeric:tabular-nums; }
   .pin { position:absolute; min-width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); box-shadow:0 1px 4px rgba(0,0,0,.35); z-index:6; border:2px solid #fff; }
   .pin.addressed { background:var(--warn); }
   .pin.resolved { background:#fff; color:var(--ok); border-color:var(--ok); }
@@ -114,6 +114,13 @@
   .tag.bad { background:var(--bad-wash); color:var(--bad); }
   .num { display:inline-grid; place-items:center; min-width:20px; height:20px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; font-variant-numeric:tabular-nums; align-self:center; }
   .val { margin-top:4px; }
+  .badge.hot { outline:3px solid var(--accent); outline-offset:2px; }
+  /* a part row is a button, with a full border and a tint when selected */
+  .list .item-btn { display:block; width:100%; text-align:left; font:inherit; color:inherit; background:none; cursor:pointer; border:1px solid transparent; border-bottom-color:var(--ui-line); border-radius:6px; padding:8px; }
+  .list .item-btn:hover, .list .item-btn:focus-visible { background:var(--ui-wash); }
+  .list .item-btn.sel { background:var(--accent-wash); border-color:var(--accent); }
+  .item-btn .item-h { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; }
+  .item-btn .note { display:block; margin-top:2px; }
   .banner .short { display:none; }
 
   /* the component under test: Dialog / Confirm */
@@ -378,7 +385,9 @@ function drawOverlay() {
       const line = document.createElementNS(NS, 'polyline'); line.setAttribute('points', `${ex},${by} ${cx},${by} ${cx},${it.ay} ${it.ax},${it.ay}`); line.setAttribute('data-n', it.n);
       Object.entries({ fill: 'none', stroke: '#1c2026', 'stroke-width': '1.5', 'stroke-dasharray': '2 4', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => line.setAttribute(k, v)); svg.appendChild(line);
       const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('cx', it.ax); dot.setAttribute('cy', it.ay); dot.setAttribute('r', 3); dot.setAttribute('fill', '#1c2026'); svg.appendChild(dot);
-      const b = document.createElement('div'); b.className = 'badge'; b.textContent = it.n; b.style.left = bx + 'px'; b.style.top = by + 'px'; badges.appendChild(b);
+      const b = document.createElement('div'); b.className = 'badge'; b.dataset.n = it.n; b.textContent = it.n; b.style.left = bx + 'px'; b.style.top = by + 'px';
+      b.onmouseenter = () => hotPart(it.n - 1, true); b.onmouseleave = () => hotPart(it.n - 1, false); b.onclick = () => togglePart(it.n - 1); /* a number on the frame selects its part too */
+      badges.appendChild(b);
     });
     badges.prepend(svg);
   }
@@ -398,7 +407,7 @@ function toggleOriginal() {
 function discardDraft() { const keep = state.selected && selectorOf(state.selected); stage.innerHTML = state.original; state.draft = []; state.viewingOriginal = false; state.selected = keep ? resolve(keep) : null; drawOverlay(); updateStageTop(); renderPanel(); announce('Draft discarded'); }
 
 /* ---------- toolbar and controls ---------- */
-function syncModeClasses() { const parts = state.mode === 'anatomy' && state.view === 'parts'; frame.classList.toggle('parts', parts); $('#fw').classList.toggle('gutter', parts); fit(); }
+function syncModeClasses() { const parts = state.mode === 'anatomy' && state.view === 'parts'; frame.classList.toggle('parts', parts); $('#fw').classList.toggle('gutter', state.mode === 'anatomy'); /* the margin stays in every Anatomy view so the frame never jumps */ fit(); }
 function setMode(m) { state.mode = m; if (m === 'test') state.selected = null; hl.style.display = 'none'; syncModeClasses(); updateToolbar(); updateStageTop(); drawOverlay(); renderPanel(); announce(MODE_LABEL[m] + ' mode'); }
 $$('#modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 $$('#presets button').forEach((b) => b.addEventListener('click', () => setWidth(Number(b.dataset.w))));
@@ -436,6 +445,14 @@ stage.addEventListener('click', (e) => {
 }, true);
 function select(el) { state.selected = el; drawOverlay(); renderPanel(); openSheet(true); announce(`Selected ${el.dataset.slot}, ${roleOf(el)}`); }
 function deselect() { state.selected = null; hl.style.display = 'none'; drawOverlay(); renderPanel(); }
+function togglePart(i) { const el = $$('[data-slot]', stage)[i]; if (!el) return; if (state.selected === el) deselect(); else select(el); }
+/* light up one part: its number, its leader and its place on the frame */
+function hotPart(i, on) {
+  const el = $$('[data-slot]', stage)[i]; if (!el) return;
+  $$(`.badge[data-n="${i + 1}"]`).forEach((b) => b.classList.toggle('hot', on));
+  $$(`#badges polyline[data-n="${i + 1}"]`).forEach((l) => { l.setAttribute('stroke', on ? '#5b3fd0' : '#1c2026'); l.setAttribute('stroke-width', on ? '2.5' : '1.5'); });
+  if (on) place(hl, el); else hl.style.display = 'none';
+}
 function openSheet(open) { rail.classList.toggle('open', open); $('#sheetBar').setAttribute('aria-expanded', String(open)); }
 $('#sheetBar').addEventListener('click', () => openSheet(!rail.classList.contains('open')));
 document.addEventListener('keydown', (e) => {
@@ -489,7 +506,7 @@ function renderPanel() {
   if (state.mode === 'edit') h += editPanel();
   h += sweepPanel() + viewportsPanel() + (state.mode === 'comment' ? '' : '') + commentList();
   panel.innerHTML = h; bindPanel(); bindDraft(); $('#sheetTitle').textContent = sheetTitle();
-  rail.classList.toggle('compact', state.mode === 'anatomy' && state.view === 'parts');
+  rail.classList.toggle('compact', state.mode === 'anatomy');
 }
 function selectedCard() {
   const el = state.selected; if (!el) return '';
@@ -523,12 +540,14 @@ function commentPanel() {
 }
 function anatomyPanel() {
   const tabs = ['parts', 'props', 'tokens', 'accessibility'];
-  let h = `<h3>Anatomy</h3><div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" data-view="${t}" aria-selected="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
-  const slots = $$('[data-slot]', stage);
-  if (state.view === 'parts') h += `<p class="note">Numbers on the frame match this list.</p><table><tr><th>#</th><th>slot</th><th>element</th><th>role</th></tr>${slots.map((e, i) => `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code>${isTarget(e) || e.tagName === 'H2' ? `<div class="note">“${esc(nameOf(e))}”</div>` : ''}</td><td>${e.tagName.toLowerCase()}</td><td>${roleOf(e)}</td></tr>`).join('')}</table>`;
+  let h = `<h3>Anatomy</h3>${selectedCard()}<div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" data-view="${t}" aria-selected="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
+  const slots = $$('[data-slot]', stage); const selIdx = state.selected ? slots.indexOf(state.selected) : -1;
+  /* a row is a button: it selects the part, and hovering or focusing it lights up the part on the frame */
+  const row = (e, i, note, tag) => `<button type="button" class="item item-btn${i === selIdx ? ' sel' : ''}" data-part="${i}" aria-pressed="${i === selIdx}"><span class="item-h"><span class="num">${i + 1}</span><code>${e.dataset.slot}</code>${tag || ''}</span><span class="note">${note}</span></button>`;
+  if (state.view === 'parts') h += `<p class="note">Select a part here or on the frame. Numbers match the frame.</p><div class="list">${slots.map((e, i) => row(e, i, `${e.tagName.toLowerCase()} · ${roleOf(e)}${isTarget(e) || e.tagName === 'H2' ? ` · “${esc(nameOf(e))}”` : ''}`)).join('')}</div>`;
   if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent)], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><div class="list">${rows.map((r) => `<div class="item"><div class="item-h"><code>${r[0]}</code><span class="note">${esc(r[1])}</span></div><div class="val"><code>${esc(r[2])}</code></div></div>`).join('')}</div>`; }
-  if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? selectedCard() : '<p class="note">Showing the dialog. Click an element to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
-  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<div class="list">${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return `<div class="item"><div class="item-h"><span class="num">${i + 1}</span><code>${e.dataset.slot}</code>${isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ' too small' : ''}</span>` : ''}</div><div class="note">${roleOf(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : ' · <em>no accessible name</em>'}</div></div>`; }).join('')}</div><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
+  if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? '' : '<p class="note">Showing the dialog. Select a part on the frame, or in Parts, to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
+  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<div class="list">${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return row(e, i, `${roleOf(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : ' · <em>no accessible name</em>'}`, isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ' too small' : ''}</span>` : ''); }).join('')}</div><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
   return h;
 }
 function editPanel() {
@@ -570,6 +589,11 @@ function bindPanel() {
   $$('[data-remove]').forEach((b) => (b.onclick = () => removeComment(b.dataset.remove)));
   $$('.comment[data-id]').forEach((c) => { const on = (v) => () => { const p = $(`.pin[data-id="${c.dataset.id}"]`); if (p) p.classList.toggle('hot', v); }; c.onmouseenter = on(true); c.onmouseleave = on(false); });
   const d = $('#desel'); if (d) d.onclick = deselect;
+  $$('[data-part]').forEach((b) => {
+    const i = Number(b.dataset.part);
+    b.onclick = () => { const el = $$('[data-slot]', stage)[i]; if (state.selected === el) deselect(); else select(el); const nb = $(`[data-part="${i}"]`); if (nb) nb.focus(); }; /* the panel re-renders: keep the keyboard on the same row */
+    b.onmouseenter = b.onfocus = () => hotPart(i, true); b.onmouseleave = b.onblur = () => hotPart(i, false);
+  });
   const cs = $('#csave'), cd = $('#csend');
   if (cs) cs.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, false); };
   if (cd) cd.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, true); };
