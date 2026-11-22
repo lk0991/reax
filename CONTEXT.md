@@ -18,4 +18,12 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Review**: The command that audits existing components against `DESIGN.md` and the mobile-first and AI-usability goals.
 
-**Visual test**: An automated screenshot comparison of a component's Storybook stories, run with Playwright, that reports results and a list of improvements.
+**Visual test**: The automated checks on a component's Storybook stories, run with Playwright: a screenshot pixel comparison and an accessibility scan. It writes a text report with a list of improvements.
+
+**Visual review**: Claude's judgement of the screenshots of a component's rendered stories against `DESIGN.md` and the component card, reported as text. The screenshots are also left for the user to confirm.
+
+**Component card**: A short per-component specification the skill loads on demand: anatomy, props, variants, states, accessibility requirements, mobile behaviour and review checks. Both generation and review read the same card.
+
+**Default ruling**: The choice the skill applies where authoritative sources disagree. A project can override it, except for accessibility requirements, which always apply.
+
+**Alias map**: The list linking each component's other names (for example Modal, Dialog, Popup) to one canonical name, so a project's own names resolve to the right component card.
