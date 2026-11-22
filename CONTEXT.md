@@ -28,7 +28,7 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Baseline**: The approved reference captures that a later visual test is compared with. A person approves them, and only after the visual review has passed. A first run with no baseline fails nothing.
 
-**Preview**: The local live page, opened from the visual test, where a person uses a built component by hand. It has four modes (test, comment, anatomy, edit), a resizable frame, and a sweep that finds the narrowest width at which the component still works. It is generated into a scratch folder and never committed.
+**Preview**: The local live page, opened from the visual test, where a person uses a built component by hand. It has four modes (test, comment, anatomy, edit), a resizable frame, and a sweep that finds the narrowest width at which the component still works. It renders the project's stories in Storybook's own preview frame, which a local helper starts and serves beside the page. The page itself is generated into a scratch folder and never committed.
 
 **Comment**: A note a person attaches to a selected element in the Preview. It records the text, the story, the viewport and text scale, the element's selector, role, accessible name, position and size, a cropped screenshot, and a status (open, addressed, resolved). Only the person marks a comment resolved.
 
