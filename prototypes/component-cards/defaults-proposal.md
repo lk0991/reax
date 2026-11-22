@@ -1,0 +1,19 @@
+# Proposed defaults for the nine source disagreements (PROTOTYPE, for ticket #10)
+
+Draft rulings for `reax`. Each says what to generate by default and what `review` flags. Every one is overridable by the target project's `DESIGN.md`. Evidence: `research/component-anatomy.md` and `research/component-gallery.md`.
+
+| # | Disagreement | Proposed default | `review` flags |
+|---|---|---|---|
+| 1 | Touch target (24px AA floor vs 44px preference) | Interactive targets are at least 24×24 CSS px (WCAG 2.2 SC 2.5.8). Go larger only when `DESIGN.md` states a size. Checkbox and radio hit area is the whole label row. | Any pointer target under 24×24 without spacing, inline or equivalent-control exception. |
+| 2 | Toast role and timing (APG `alert` vs Radix and Carbon `status`) | `role="status"` with polite live region for info and success. Errors use `role="alert"`. Never steal focus. No auto-dismiss for errors or toasts with an action; others dismiss after 5s minimum and pause on hover and focus. Always a dismiss control. | Auto-dismissing error or action toast. Missing dismiss. Focus moved to the toast. |
+| 3 | Dialog outside click (native Esc-only vs Radix default on) | Esc and a visible close button always work. Outside click is opt-in (`dismissOnOutsideClick`, default false). Alert dialogs never dismiss on outside click. | Dialog with no accessible name. No close button. Outside click on a form dialog. |
+| 4 | Disabled controls (APG `aria-disabled` vs native `disabled`) | Native `disabled` when an action is permanently unavailable. When users need to learn why, use `aria-disabled="true"`, keep focus, and explain via `aria-describedby`. Pending or loading keeps focus and announces. | Disabled control with no explanation where the reason is not obvious. |
+| 5 | Tooltip (APG pattern work in progress; delays 50 to 700ms) | Two types: `label` (icon-only buttons) and `description`. Opens on hover and focus after 400ms, stays open while hovered, Esc dismisses, never focusable. Never holds essential content. On touch, show the text visibly or use a popover. | Essential content in a tooltip. Icon-only button with neither label nor tooltip. |
+| 6 | Pagination (numbered vs prev/next vs page size) | Mobile-first default is previous and next with "Page X of Y". Numbered links are an opt-in variant. Both are in a labelled `nav`, with `aria-current="page"` on the current link. In table contexts, announce page changes with a live region. | Missing nav label. `aria-current="true"` instead of `page`. |
+| 7 | Variant and size names differ everywhere | Use the names in `DESIGN.md`. With none, fall back to: emphasis `primary`, `secondary`, `ghost`; intent `neutral`, `info`, `success`, `warning`, `danger` (meaning names, not hues); size `sm`, `md`, `lg`. | Colour-only meaning. Names that differ from `DESIGN.md`. |
+| 8 | Form field `disabled` and `required` (wrapper vs control) | Set once on the Field wrapper. The wrapper forwards them to the control and wires label, description, error, `aria-describedby` and `aria-invalid`. The rendered control carries the native attributes. | Control without an associated label. Error not linked with `aria-describedby`. Placeholder used as the label. |
+| 9 | Native vs custom | Native first: `button`, `input`, `select` (native on touch), `dialog`, `details name`, `table`. Build an ARIA widget only when no native element gives the behaviour (tabs, menu, combobox, tooltip). | Custom widget where a native element would do. ARIA role that duplicates native semantics. |
+
+Also adopted from the research, not disagreements: tabs activate automatically by default; a clickable card has one real link or button as its primary target; icon-only buttons always have an accessible name.
+
+Items the research labelled "inference" (rows 6 and 8 partly, clickable card, native select on touch) are judgement calls and need your sign-off rather than a source.
