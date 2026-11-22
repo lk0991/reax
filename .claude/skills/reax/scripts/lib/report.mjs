@@ -2,7 +2,7 @@
 // "Improvements" sections are marked placeholders that Claude fills in after looking at the screenshots (decision: Q9).
 
 const IMPACT_ORDER = ['critical', 'serious', 'moderate', 'minor'];
-const label = (vp) => ({ 'mobile-390': '390×844', 'desktop-1280': '1280×800', 'reflow-320': '320px reflow', 'text-200': '200% text' }[vp] || vp);
+const label = (vp) => ({ 'mobile-390': '390×844', 'desktop-1280': '1280×800', 'reflow-320': '320px reflow', 'text-200': '200% text' }[vp] || (String(vp).startsWith('pinned-') ? `${String(vp).slice(7)}px (pinned)` : vp));
 const pct = (r) => `${(r * 100).toFixed(r < 0.001 && r > 0 ? 3 : 2)}%`;
 const esc = (s) => String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 

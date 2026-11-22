@@ -18,6 +18,7 @@ import { parseArgs, req, missing, chromiumPath, findUp, readJson, writeJson } fr
 import { mergeConfig, capture } from './lib/capture.mjs';
 import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
+import { selectStories as select } from './lib/select.mjs';
 import { storybookInfo, buildStatic, serveStatic, readIndex } from './lib/storybook.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,8 @@ const log = (m) => console.error(m);
 const fail = (message, extra = {}) => { console.log(JSON.stringify({ ok: false, error: message, ...extra }, null, 2)); process.exit(1); };
 
 const config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {}));
+/* widths pinned in the live preview become extra captures */
+for (const w of readJson(path.join(root, '.reax', 'viewports.json'), [])) if (Number.isInteger(w) && !config.viewports.some((v) => v.width === w && !v.textScale)) config.viewports.push({ name: `pinned-${w}`, width: w, height: 844 });
 const reportDir = path.join(root, 'visual-report');
 const baselineDir = path.join(root, '.reax', 'baselines');
 
@@ -82,7 +85,7 @@ async function run() {
   let index;
   try { index = await readIndex(server.url); } catch (e) { await server.close(); fail(`Could not read Storybook's story list: ${e.message}`); }
 
-  const scope = selectStories(index.stories);
+  const scope = select({ root, config, args, all: index.stories });
   if (!scope.stories.length) { await server.close(); console.log(JSON.stringify({ ok: true, ran: 0, message: scope.description, hint: 'Use --all, or --component <name>, to choose stories.' }, null, 2)); process.exit(0); }
   log(`Running ${scope.stories.length} stories x ${config.viewports.length} captures (${scope.description}).`);
 
@@ -113,36 +116,6 @@ async function run() {
   fs.writeFileSync(path.join(reportDir, 'report.md'), renderReport(runJson));
   console.log(JSON.stringify({ ok: exitCode === 0, ...summary, report: path.relative(root, path.join(reportDir, 'report.md')), run: path.relative(root, path.join(reportDir, 'run.json')), exitCode }, null, 2));
   process.exit(exitCode);
-}
-
-/* ---------- selecting stories ---------- */
-function selectStories(all) {
-  const eligible = all.filter((s) => !(s.tags || []).includes(config.skipTag));
-  const skipped = all.length - eligible.length;
-  const nameOf = (s) => s.title.split('/').pop().trim().toLowerCase();
-  const dirOf = (s) => path.posix.normalize(path.posix.dirname(s.importPath));
-  const suffix = skipped ? ` (${skipped} skipped by the ${config.skipTag} tag)` : '';
-  if (args.all) return { mode: 'all', stories: eligible, description: `all stories${suffix}` };
-  if (args.component) {
-    const want = String(args.component).toLowerCase().split(',').map((x) => x.trim());
-    const stories = eligible.filter((s) => want.includes(nameOf(s)) || want.includes(path.posix.basename(dirOf(s)).toLowerCase()));
-    return { mode: 'component', stories, description: stories.length ? `components: ${args.component}${suffix}` : `No story matches ${args.component}.` };
-  }
-  const changed = changedFiles();
-  if (changed === null) return { mode: 'all', stories: eligible, description: `all stories, because this is not a git repository${suffix}` };
-  const sidecar = readJson(path.join(root, '.reax', 'design.json'), {});
-  const global = changed.some((f) => f.startsWith('.storybook/') || (sidecar.scan?.tokenFiles || []).includes(f));
-  if (global) return { mode: 'all', stories: eligible, description: `all stories, because a token file or the Storybook setup changed${suffix}` };
-  const stories = eligible.filter((s) => { const d = dirOf(s).replace(/^\.\//, ''); return changed.some((f) => f === d || f.startsWith(d + '/')); });
-  return { mode: 'changed', stories, description: stories.length ? `components changed per git${suffix}` : 'No component changed per git.' };
-}
-
-function changedFiles() {
-  const top = spawnSync('git', ['-C', root, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
-  if (top.status !== 0) return null;
-  const st = spawnSync('git', ['-C', root, 'status', '--porcelain', '-uall'], { encoding: 'utf8' });
-  if (st.status !== 0) return null;
-  return st.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).replace(/^"|"$/g, '').split(' -> ').pop()).map((f) => path.relative(root, path.join(top.stdout.trim(), f)).split(path.sep).join('/')).filter((f) => !f.startsWith('..') && !f.startsWith('visual-report/') && !f.startsWith('.reax/baselines/'));
 }
 
 /* ---------- turning captures into a story result ---------- */
