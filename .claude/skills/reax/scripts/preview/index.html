@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>reax preview</title>
+<style>
+  /* The reax live preview: Storybook's own frame inside, our review tools around it. */
+  :root {
+    /* chrome of the tool: neutral, with one accent kept for the active mode and the selected element */
+    --ui-bg:#eef0f3; --ui-panel:#ffffff; --ui-ink:#1c2026; --ui-muted:#566070; --ui-line:#d3d8e0; --ui-wash:#f5f6f8;
+    --accent:#5b3fd0; --accent-wash:rgba(91,63,208,.12);
+    --ok:#1b7a43; --ok-wash:#e4f4ea; --bad:#a3262b; --bad-wash:#fbe5e6; --warn:#8a5a00; --warn-wash:#fdf1d6; --info:#1f4f9a; --info-wash:#e6eefb;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scrollbar-color: #b7bdc8 transparent; }
+  body { margin:0; background:var(--ui-bg); color:var(--ui-ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  ::selection { background:var(--accent-wash); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  /* header: mode switch always visible; viewport controls collapse on phones */
+  .bar { background:var(--ui-panel); border-bottom:1px solid var(--ui-line); position:sticky; top:0; z-index:20; padding:8px 16px; }
+  .bar-row { display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; }
+  h1 { font-size:15px; margin:0; }
+  .pill { font-size:11px; font-weight:700; letter-spacing:.04em; background:var(--warn-wash); color:var(--warn); padding:2px 8px; border-radius:999px; }
+  .seg { display:inline-flex; border:1px solid var(--ui-line); border-radius:8px; overflow:hidden; background:#fff; }
+  .seg button { border:0; background:transparent; padding:7px 12px; font:inherit; cursor:pointer; color:var(--ui-ink); min-height:32px; }
+  .seg button + button { border-left:1px solid var(--ui-line); }
+  .seg button[aria-pressed="true"] { background:var(--accent); color:#fff; }
+  #controls summary { cursor:pointer; padding:6px 0; color:var(--ui-muted); }
+  .controls { display:flex; flex-wrap:wrap; gap:10px 22px; padding:6px 0 4px; align-items:center; }
+  .cluster { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; }
+  .readout { color:var(--ui-muted); font-variant-numeric:tabular-nums; min-width:84px; }
+  .chk { display:inline-flex; gap:6px; align-items:center; }
+  @media (min-width:900px) { #controls summary { display:none; } }
+
+  .b { border:1px solid var(--ui-line); background:#fff; color:var(--ui-ink); border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer; min-height:32px; }
+  .b:hover { background:var(--ui-wash); }
+  .b.pri { background:var(--ui-ink); border-color:var(--ui-ink); color:#fff; }
+  .b.pri:hover { background:#000; }
+  .b.sm { padding:3px 10px; min-height:28px; font-size:13px; }
+  .b:disabled { opacity:.45; cursor:not-allowed; }
+  select, input[type=text], input[type=number], textarea { font:inherit; padding:5px 8px; border:1px solid var(--ui-line); border-radius:6px; background:#fff; color:var(--ui-ink); min-height:32px; }
+  input[type=number] { width:76px; }
+  textarea { width:100%; min-height:64px; }
+
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; min-height:calc(100vh - 56px); }
+  .stage-wrap { padding:16px 24px 24px; min-width:0; }
+  .banner { display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--info-wash); color:var(--info); border-radius:8px; padding:6px 12px; margin-bottom:12px; font-size:13px; }
+  .stage-top { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; min-height:34px; margin-bottom:8px; }
+  .chip { background:var(--ui-ink); color:#fff; font-size:12px; padding:3px 10px; border-radius:999px; }
+  .note { color:var(--ui-muted); font-size:13px; margin:0; text-wrap:pretty; }
+  .draftpill { background:var(--warn-wash); color:var(--warn); font-size:13px; padding:3px 10px; border-radius:999px; font-weight:600; }
+
+  .frame-wrap { position:relative; width:max-content; padding-right:16px; }
+  .frame-wrap.gutter { margin-left:44px; padding-right:60px; }
+  #scaler { position:relative; }
+  #frame { position:absolute; left:0; top:0; background:#8b909a; overflow:hidden; border:1px solid #5f6672; border-radius:6px; transform-origin:0 0; }
+  #stage { position:absolute; inset:0; }
+  #sb { position:absolute; inset:0; width:100%; height:100%; border:0; background:#fff; }
+  #handle { position:absolute; top:0; right:0; width:16px; height:100%; cursor:ew-resize; display:grid; place-items:center; touch-action:none; border-radius:4px; }
+  #handle::after { content:""; width:4px; height:48px; border-radius:2px; background:var(--ui-muted); }
+  #handle:hover::after, #handle:focus-visible::after { background:var(--accent); }
+  #overlay { position:absolute; inset:0; pointer-events:none; }
+  #hl { position:absolute; display:none; border:2px dashed var(--accent); background:var(--accent-wash); z-index:3; }
+  #sel { position:absolute; display:none; border:2px solid var(--accent); z-index:4; }
+  .badge { pointer-events:auto; cursor:pointer; position:absolute; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); z-index:5; font-variant-numeric:tabular-nums; }
+  .pin { position:absolute; min-width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); box-shadow:0 1px 4px rgba(0,0,0,.35); z-index:6; border:2px solid #fff; }
+  .pin.addressed { background:var(--warn); }
+  .pin.resolved { background:#fff; color:var(--ok); border-color:var(--ok); }
+  .pin.hot { outline:3px solid var(--accent); outline-offset:2px; }
+
+  /* review rail: right column on desktop, bottom sheet on phones */
+  #rail { background:var(--ui-panel); border-left:1px solid var(--ui-line); min-width:0; display:flex; flex-direction:column; }
+  #panel { padding:16px; overflow:auto; flex:1; }
+  .sheet-bar { display:none; }
+  #panel h3 { margin:18px 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--ui-muted); }
+  #panel h3:first-child { margin-top:0; }
+  .row { display:grid; grid-template-columns:84px minmax(0,1fr); gap:8px; align-items:center; margin:6px 0; }
+  .row select, .row input[type=text] { width:100%; min-width:0; }
+  .card { border:1px solid var(--ui-line); border-radius:8px; padding:8px 10px; margin:8px 0; background:var(--ui-wash); }
+  .comment { border:1px solid var(--ui-line); border-radius:8px; padding:8px 10px; margin:8px 0; }
+  .comment:hover { border-color:var(--accent); }
+  .card-h { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  code { font:12px ui-monospace,monospace; background:#eceef2; padding:1px 4px; border-radius:4px; overflow-wrap:anywhere; }
+  .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:999px; background:#eceef2; font-weight:600; }
+  .tag.open { background:var(--info-wash); color:var(--info); } .tag.addressed { background:var(--warn-wash); color:var(--warn); } .tag.resolved { background:var(--ok-wash); color:var(--ok); }
+  .alert { background:var(--bad-wash); color:var(--bad); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .caution { background:var(--warn-wash); color:var(--warn); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .good { background:var(--ok-wash); color:var(--ok); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--ui-line); margin:8px 0; }
+  .tabs button { border:0; background:transparent; padding:6px 10px; font:inherit; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; color:var(--ui-muted); }
+  .tabs button[aria-selected="true"] { border-bottom-color:var(--accent); color:var(--ui-ink); font-weight:600; }
+  details.more { margin:8px 0; } details.more summary { cursor:pointer; color:var(--ui-muted); }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  /* stacked rows instead of columns: nothing depends on the rail's width, long values wrap */
+  .list .item { padding:8px 0; border-bottom:1px solid var(--ui-line); }
+  .item-h { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+  .item-h .tag { margin-left:auto; }
+  .tag.bad { background:var(--bad-wash); color:var(--bad); }
+  .tag.warn { background:var(--warn-wash); color:var(--warn); }
+  .grp { margin:14px 0 4px; font-size:13px; }
+  .sw { display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid var(--ui-line); align-self:center; }
+  #panel { overflow-wrap:anywhere; } /* a 150-character name with no spaces must not push the rail wider */
+  .num { display:inline-grid; place-items:center; min-width:20px; height:20px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; font-variant-numeric:tabular-nums; align-self:center; }
+  .val { margin-top:4px; }
+  .badge.hot { outline:3px solid var(--accent); outline-offset:2px; }
+  /* a part row is a button, with a full border and a tint when selected */
+  .list .item-btn { display:block; width:100%; text-align:left; font:inherit; color:inherit; background:none; cursor:pointer; border:1px solid transparent; border-bottom-color:var(--ui-line); border-radius:6px; padding:8px; }
+  .list .item-btn:hover, .list .item-btn:focus-visible { background:var(--ui-wash); }
+  .list .item-btn.sel { background:var(--accent-wash); border-color:var(--accent); }
+  .item-btn .item-h { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; }
+  .item-btn .note { display:block; margin-top:2px; }
+  .banner .short { display:none; }
+
+  @media (max-width:899px) {
+    .bar { padding:6px 12px; }
+    .layout { grid-template-columns:minmax(0,1fr); }
+    .stage-wrap { padding:12px 12px 84px; }
+    #rail { position:fixed; left:0; right:0; bottom:0; max-height:56vh; z-index:30; border-left:0; border-top:1px solid var(--ui-line); box-shadow:0 -8px 24px rgba(0,0,0,.14); transform:translateY(calc(100% - 52px)); transition:transform .22s cubic-bezier(.16,1,.3,1); }
+    #rail.open { transform:none; }
+    #rail.compact { max-height:40vh; } /* Parts is a diagram-to-list task: keep the frame in view above the sheet */
+    .banner { padding:4px 8px 4px 12px; margin-bottom:8px; } .banner .long { display:none; } .banner .short { display:inline; }
+    .sheet-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:52px; padding:0 16px; border:0; background:var(--ui-panel); font:inherit; font-weight:600; color:var(--ui-ink); cursor:pointer; text-align:left; }
+    .chev { width:10px; height:10px; border-right:2px solid var(--ui-muted); border-bottom:2px solid var(--ui-muted); transform:rotate(-135deg); transition:transform .2s; }
+    #rail.open .chev { transform:rotate(45deg); }
+  }
+  @media (pointer:coarse) { .b.sm, .tabs button, .seg button, select, input[type=number] { min-height:40px; } }
+  @media (prefers-reduced-motion:reduce) { #rail, .chev { transition:none; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-row">
+    <h1>reax preview</h1><span class="note" id="project"></span>
+    <div class="seg" id="modes" role="group" aria-label="Mode">
+      <button type="button" data-mode="test" aria-pressed="true" aria-keyshortcuts="1" title="Test (1)">Test</button>
+      <button type="button" data-mode="comment" aria-pressed="false" aria-keyshortcuts="2" title="Comment (2)">Comment</button>
+      <button type="button" data-mode="anatomy" aria-pressed="false" aria-keyshortcuts="3" title="Anatomy (3)">Anatomy</button>
+      <button type="button" data-mode="edit" aria-pressed="false" aria-keyshortcuts="4" title="Edit (4)">Edit</button>
+    </div>
+  </div>
+  <details id="controls" open>
+    <summary>Width, text size and story</summary>
+    <div class="controls">
+      <div class="cluster" role="group" aria-label="Viewport">
+        <div class="seg" id="presets" role="group" aria-label="Width presets">
+          <button type="button" data-w="320" aria-pressed="false">320</button>
+          <button type="button" data-w="390" aria-pressed="true">390</button>
+          <button type="button" data-w="768" aria-pressed="false">768</button>
+          <button type="button" data-w="1280" aria-pressed="false">1280</button>
+        </div>
+        <label>Width <input type="number" id="wInput" min="180" max="1600" step="10" inputmode="numeric"> px</label>
+        <span class="readout" id="readout"></span>
+        <label class="chk"><input type="checkbox" id="t200"> 200% text</label>
+      </div>
+      <div class="cluster">
+        <label>Story <select id="story"></select></label>
+        <button class="b" id="sweep" type="button">Find narrowest width</button>
+      </div>
+    </div>
+  </details>
+</header>
+<main class="layout">
+  <section class="stage-wrap" id="stageWrap" aria-label="Preview">
+    <div id="demoBanner" class="banner" hidden><span class="long">The preview helper stopped answering. Comments and edits cannot be saved until you run the preview again.</span><span class="short">The helper stopped answering.</span></div>
+    <div class="stage-top"><span class="chip" id="chip"></span><span class="note" id="scaleNote"></span><span id="draftStrip"></span></div>
+    <div class="frame-wrap" id="fw">
+      <div id="scaler"><div id="frame"><div id="stage"><iframe id="sb" title="Component preview" src="about:blank"></iframe></div></div></div>
+      <div id="handle" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Preview width" aria-valuemin="180" aria-valuemax="1600"></div>
+      <div id="overlay" aria-hidden="true"><div id="hl"></div><div id="sel"></div><div id="badges"></div><div id="pins"></div></div>
+    </div>
+    <p class="note" style="margin-top:10px">Drag the handle, or focus it and press the arrow keys (Shift for 50px), to resize. Keys 1 to 4 switch mode, Esc deselects.</p>
+  </section>
+  <aside id="rail" aria-label="Review panel">
+    <button type="button" class="sheet-bar" id="sheetBar" aria-expanded="false" aria-controls="panel"><span id="sheetTitle"></span><span class="chev" aria-hidden="true"></span></button>
+    <div id="panel"></div>
+  </aside>
+</main>
+<div class="sr" id="status" role="status" aria-live="polite"></div>
+
+<script>
+const BOOT = "__REAX_BOOT__";
+const TOKEN = BOOT.token;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const api = async (path, method = 'GET', body) => {
+  try {
+    const r = await fetch('/__reax/api' + path, { method, headers: { 'x-token': TOKEN, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    if (!r.ok) throw new Error(String(r.status));
+    $('#demoBanner').hidden = true;
+    return await r.json();
+  } catch (e) { $('#demoBanner').hidden = false; throw e; }
+};
+
+/* The design tokens are the CSS custom properties the project already defines. They are read from the story's own page,
+   so the values are the project's, whatever file they came from (DESIGN.md names them, the token files own the values). */
+const GROUPS = { color: ['--color-'], padding: ['--space-', '--spacing-'], borderRadius: ['--radius-', '--rounded-'], fontSize: ['--text-', '--font-size-'], size: ['--size-'] };
+let TOKENS = { color: {}, padding: {}, borderRadius: {}, fontSize: {}, size: {} }; /* group -> name -> { raw, value } */
+const FLOOR = 24, FRAME_H = 520, MIN_W = 180, MAX_W = 1600;
+const FIELDS = {
+  padding: { key: 'padding', label: 'Padding', group: 'padding' }, borderRadius: { key: 'borderRadius', label: 'Radius', group: 'borderRadius' },
+  fontSize: { key: 'fontSize', label: 'Text size', group: 'fontSize' }, color: { key: 'color', label: 'Text colour', group: 'color' },
+  backgroundColor: { key: 'backgroundColor', label: 'Background', group: 'color' }, height: { key: 'height', label: 'Height', group: 'size' }, width: { key: 'width', label: 'Width', group: 'size' },
+};
+const PRIMARY = ['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor'], MORE = ['height', 'width'];
+const MODE_LABEL = { test: 'Test', comment: 'Comment', anatomy: 'Anatomy', edit: 'Edit' };
+const state = { mode: 'test', view: 'parts', width: 390, scale: 1, frameH: FRAME_H, t200: false, story: BOOT.initial, stories: [], selected: null, comments: [], viewports: [], draft: [], viewingOriginal: false, sweep: null, receipt: null, args: null, argTypes: null };
+const frame = $('#frame'), sb = $('#sb'), panel = $('#panel'), hl = $('#hl'), sel = $('#sel'), pins = $('#pins'), badges = $('#badges'), rail = $('#rail');
+let stage = null, sdoc = null; /* the story's root element and document, set on each load */
+const announce = (m) => { $('#status').textContent = ''; setTimeout(() => ($('#status').textContent = m), 30); };
+
+/* Everything on the page reads the story through Storybook's own frame (ADR 0003). */
+const irect = () => sb.getBoundingClientRect();
+/** An element's box in the page's coordinates. Boxes inside the frame are in the frame's own pixels, shown at the frame's scale. */
+function rectOf(el) { const r = el.getBoundingClientRect(), ir = irect(), S = state.scale; return { left: ir.left + r.left * S, right: ir.left + r.right * S, top: ir.top + r.top * S, bottom: ir.top + r.bottom * S, width: r.width * S, height: r.height * S }; }
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+const slots = () => (stage ? $$('[data-slot]', stage) : []);
+
+function loadStory(id) {
+  state.story = id; state.draft = []; state.viewingOriginal = false; state.selected = null; state.sweep = null; state.argTypes = null; state.args = null; stage = null; sdoc = null;
+  sb.src = `/iframe.html?id=${encodeURIComponent(id)}&viewMode=story`;
+  $('#story').value = id; drawOverlay(); updateStageTop(); renderPanel();
+}
+let storyObservers = [];
+async function onFrameLoad() {
+  if (!sb.contentDocument || sb.src === 'about:blank' || sb.contentDocument.location.href === 'about:blank') return;
+  storyObservers.forEach((o) => o.disconnect()); storyObservers = [];
+  sdoc = sb.contentDocument;
+  /* Storybook adds sb-show-main once the story has rendered */
+  for (let i = 0; i < 100 && !(sdoc.body.classList.contains('sb-show-main') || sdoc.body.classList.contains('sb-show-errordisplay')); i++) await new Promise((r) => setTimeout(r, 100));
+  stage = sdoc.getElementById('storybook-root') || sdoc.body;
+  const st = sdoc.createElement('style'); st.id = 'reax-style';
+  st.textContent = 'html.reax-parts [data-slot]{outline:1.5px dashed #1c2026!important;outline-offset:1px}*,*::before,*::after{caret-color:auto}';
+  sdoc.head.appendChild(st);
+  sdoc.documentElement.style.fontSize = state.t200 ? '200%' : '';
+  sdoc.documentElement.classList.toggle('reax-parts', state.mode === 'anatomy' && state.view === 'parts');
+  sdoc.addEventListener('mousemove', onMove); sdoc.addEventListener('mouseleave', () => (hl.style.display = 'none')); sdoc.addEventListener('click', onClick, true);
+  let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { drawOverlay(); if (state.mode === 'anatomy' && slots().length !== state.slotCount) renderPanel(); }); };
+  const mo = new MutationObserver(redraw); mo.observe(stage, { subtree: true, childList: true, attributes: true }); storyObservers.push(mo);
+  const ro = new ResizeObserver(redraw); ro.observe(sdoc.documentElement); storyObservers.push(ro);
+  buildTokens(); state.slotCount = slots().length;
+  reapplyDraft(false);
+  readArgTypes();
+  drawOverlay(); updateStageTop(); renderPanel();
+}
+sb.addEventListener('load', onFrameLoad);
+/* props: Storybook already knows them. Ask its preview for this story's argTypes and args. */
+async function readArgTypes() {
+  try {
+    const store = sb.contentWindow.__STORYBOOK_PREVIEW__.storyStoreValue; const story = await store.loadStory({ storyId: state.story });
+    state.argTypes = story.argTypes || {}; state.args = story.args || story.initialArgs || {};
+  } catch { state.argTypes = null; state.args = null; }
+  if (state.mode === 'anatomy' && state.view === 'props') renderPanel();
+}
+/* a probe in the story's own document turns any token (rem, em, px, colour names) into the value the story sees right now */
+function buildTokens() {
+  const probe = sdoc.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none'; sdoc.body.appendChild(probe);
+  const names = new Set();
+  for (const sheet of sdoc.styleSheets) { let rules; try { rules = sheet.cssRules; } catch { continue; } const walk = (rs) => { for (const r of rs) { if (r.cssRules && !r.style) walk(r.cssRules); if (r.style) for (const n of r.style) if (n.startsWith('--')) names.add(n); } }; walk(rules); }
+  const rootStyle = sdoc.defaultView.getComputedStyle(sdoc.documentElement); const next = { color: {}, padding: {}, borderRadius: {}, fontSize: {}, size: {} };
+  for (const n of [...names].sort()) {
+    const group = Object.keys(GROUPS).find((g) => GROUPS[g].some((p) => n.startsWith(p))); if (!group) continue;
+    const raw = rootStyle.getPropertyValue(n).trim(); if (!raw) continue;
+    probe.style.cssText = 'position:absolute;visibility:hidden;'; let value;
+    if (group === 'color') { probe.style.color = raw; value = probe.style.color ? hex(rgb(sdoc.defaultView.getComputedStyle(probe).color)) : null; }
+    else { probe.style.width = raw; value = probe.style.width ? px(sdoc.defaultView.getComputedStyle(probe).width) : null; }
+    if (value) next[group][n] = { raw, value };
+  }
+  probe.remove(); TOKENS = next;
+}
+/* ---------- element helpers ---------- */
+const slotOf = (el) => (el && el.closest ? el.closest('[data-slot]') : null);
+const textOwn = (el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
+function selectorOf(el) {
+  const slot = el.dataset.slot; const same = $(`[data-slot="${slot}"]`, stage);
+  return same.length > 1 ? `[data-slot="${slot}"]:nth(${same.indexOf(el) + 1})` : `[data-slot="${slot}"]`;
+}
+function resolve(sel) { const m = sel.match(/^\[data-slot="(.+?)"\](?::nth\((\d+)\))?$/); return m ? $$(`[data-slot="${m[1]}"]`, stage)[Number(m[2] || 1) - 1] || null : null; }
+const IMPLICIT = { BUTTON: 'button', A: 'link', H1: 'heading', H2: 'heading', H3: 'heading', H4: 'heading', H5: 'heading', H6: 'heading', P: 'paragraph', SELECT: 'combobox', TEXTAREA: 'textbox', UL: 'list', OL: 'list', LI: 'listitem', IMG: 'img', NAV: 'navigation', DIALOG: 'dialog', TABLE: 'table', LABEL: 'label' };
+const roleOf = (el) => el.getAttribute('role') || (el.tagName === 'INPUT' ? ({ checkbox: 'checkbox', radio: 'radio', range: 'slider', button: 'button', submit: 'button' }[el.type] || 'textbox') : IMPLICIT[el.tagName]) || 'generic';
+const roleLabel = (el) => (roleOf(el) === 'generic' ? 'no role' : roleOf(el)); /* "generic" is ARIA's word for a plain container; say what it means */
+function nameOf(el) {
+  if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
+  const by = el.getAttribute('aria-labelledby'); if (by && el.ownerDocument.getElementById(by)) return el.ownerDocument.getElementById(by).textContent.trim();
+  if (el.labels && el.labels[0]) return el.labels[0].textContent.trim().replace(/\s+/g, ' ');
+  if (el.placeholder && !el.textContent.trim()) return el.placeholder;
+  const t = el.textContent.trim().replace(/\s+/g, ' '); return t.length > 60 ? t.slice(0, 59) + '…' : t;
+}
+/* sizes are in the component's own pixels, so they are divided by the frame's display scale */
+const boxOf = (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; };
+const isTarget = (el) => el.matches('button,a[href],input:not([type=hidden]),select,textarea,summary,[role=button],[role=link],[role=checkbox],[role=switch],[role=tab],[role=menuitem],[role=radio]');
+const sizeOf = (el) => [el.offsetWidth, el.offsetHeight];
+function rgb(c) { const m = c.match(/[\d.]+/g).map(Number); return { r: m[0], g: m[1], b: m[2], a: m[3] === undefined ? 1 : m[3] }; }
+const hex = (c) => '#' + [c.r, c.g, c.b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+function bgOf(el) { for (let e = el; e && e !== el.ownerDocument.body; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.a > 0.99) return c; } return { r: 255, g: 255, b: 255, a: 1 }; }
+function lum(c) { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); }
+const contrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); };
+const tokenFor = (group, value) => { const t = TOKENS[group]; if (!t) return null; for (const [n, v] of Object.entries(t)) if (v.value === value) return n; return null; };
+const px = (v) => Math.round(parseFloat(v) * 10) / 10 + 'px';
+/* what the element has now, in token terms; values with no token say so instead of inventing one */
+function currentToken(el, f) {
+  const cs = getComputedStyle(el);
+  if (f.key === 'fontSize') { const v = px(cs.fontSize); const t = tokenFor('fontSize', v); return t ? `${t} (${v})` : `${v} (no token)`; }
+  if (f.group === 'color') { const c = rgb(cs[f.key]); if (c.a < 0.05) return 'none (transparent)'; const v = hex(c); const t = tokenFor('color', v); return t ? `${t} (${v})` : `${v} (no token)`; }
+  if (f.key === 'padding') { const s = ['Top', 'Right', 'Bottom', 'Left'].map((k) => px(cs['padding' + k])); if (s.every((x) => x === s[0])) { if (s[0] === '0px') return 'none (no padding)'; const t = tokenFor('padding', s[0]); return t ? `${t} (${s[0]})` : `${s[0]} (no token)`; } const short = s[0] === s[2] && s[1] === s[3] ? `${s[0]} ${s[1]}` : s.join(' '); const names = s.map((v) => (v === '0px' ? '0' : tokenFor('padding', v))); return names.every(Boolean) ? `${short} (${[...new Set(names.filter((n) => n !== '0'))].join(', ')})` : `${short} (sides differ)`; }
+  if (f.key === 'borderRadius') { const v = px(cs.borderTopLeftRadius); if (v === '0px') return 'none (square corners)'; const t = tokenFor('borderRadius', v); return t ? `${t} (${v})` : `${v} (no token)`; }
+  const v = (f.key === 'height' ? el.offsetHeight : el.offsetWidth) + 'px'; const t = tokenFor('size', v); return t ? `${t} (${v})` : `${v} (no token)`;
+}
+const breakpoint = (w) => (w < 360 ? 'xs' : w < 640 ? 'sm' : w < 1024 ? 'md' : 'lg'); /* the spec's breakpoints: sm 390, md 768, lg 1280 */
+const WIDE = window.matchMedia('(min-width: 900px)');
+
+/* ---------- layout checks (also used by the width sweep) ---------- */
+function checkLayout() {
+  if (!stage) return []; const f = irect(); const problems = []; const tol = 1;
+  slots().forEach((el) => {
+    const r = rectOf(el);
+    if (r.right > f.right + tol || r.left < f.left - tol) problems.push(`${el.dataset.slot} clips the frame by ${Math.round(Math.max(r.right - f.right, f.left - r.left) / state.scale)}px`);
+    const [w, h] = sizeOf(el); if (isTarget(el) && (w < FLOOR || h < FLOOR)) problems.push(`${el.dataset.slot} target is ${w}x${h}px (floor ${FLOOR}px)`);
+  });
+  if (sdoc.documentElement.scrollWidth > sdoc.documentElement.clientWidth + 1) problems.push('the page scrolls sideways');
+  return problems;
+}
+
+/* ---------- frame size, scale and overlays ---------- */
+function fit() {
+  const wrap = $('#stageWrap'); const cs = getComputedStyle(wrap);
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16 - ($('#fw').classList.contains('gutter') ? 88 : 0);
+  /* no floor on the scale: a floor is what made a wide frame overflow a phone. Very small is announced instead (see updateStageTop). */
+  state.scale = Math.max(0.1, Math.min(1, avail / state.width));
+  frame.style.width = state.width + 'px'; frame.style.height = state.frameH + 'px'; frame.style.transform = `scale(${state.scale})`;
+  const sc = $('#scaler'); sc.style.width = Math.round(state.width * state.scale) + 'px'; sc.style.height = Math.round(state.frameH * state.scale) + 'px';
+}
+function setWidth(w, quiet) {
+  state.width = Math.max(MIN_W, Math.min(MAX_W, Math.round(w))); fit();
+  if (quiet) return;
+  updateToolbar(); drawOverlay(); updateStageTop();
+}
+function updateToolbar() {
+  $('#readout').textContent = `${breakpoint(state.width)} breakpoint`; $('#wInput').value = state.width;
+  const h = $('#handle'); h.setAttribute('aria-valuenow', state.width); h.setAttribute('aria-valuetext', `${state.width} pixels`);
+  $$('#presets button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.w) === state.width)));
+  $$('#modes button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+}
+const fwRect = () => $('#fw').getBoundingClientRect();
+function place(box, el) { const f = fwRect(), r = rectOf(el); Object.assign(box.style, { display: 'block', left: r.left - f.left + 'px', top: r.top - f.top + 'px', width: r.width + 'px', height: r.height + 'px' }); }
+function drawOverlay() {
+  if (state.selected && stage && stage.contains(state.selected) && state.mode !== 'test') place(sel, state.selected); else sel.style.display = 'none';
+  const f = fwRect();
+  pins.innerHTML = '';
+  const partsView = state.mode === 'anatomy' && state.view === 'parts'; /* numbered badges take the room pins would use */
+  state.comments.filter((c) => !partsView && c.kind !== 'accepted-exception' && c.story === state.story && !state.viewingOriginal).forEach((c) => { const el = stage && resolve(c.selector); if (!el) return; const r = rectOf(el); const d = document.createElement('div'); d.className = 'pin ' + c.status; d.dataset.id = c.id; d.textContent = c.id.slice(1); d.style.left = Math.max(12, r.right - f.left + 10) + 'px'; d.style.top = Math.max(12, r.top - f.top - 10) + 'px'; pins.appendChild(d); });
+  badges.innerHTML = '';
+  if (stage && state.mode === 'anatomy' && state.view === 'parts' && state.scale >= 0.3) { /* below 30% the frame is too small to hold readable numbers; the list still works */
+    /* numbers sit in the margin beside the frame; a dotted leader runs from each number to its element */
+    const NS = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); svg.style.cssText = 'position:absolute;inset:0;overflow:visible';
+    /* Each number sits in the margin on the side its element is nearest. The dotted leader runs out of the number, steps
+       vertically in a channel just outside the component, and enters the element's outer edge. Upper leaders take the outer
+       channels and lower ones the inner, and a number never sits above its element, so two leaders can never cross. */
+    const u = Math.max(0.35, state.scale); /* offsets and channel gaps shrink with the frame so they stay narrower than the gaps between parts */
+    const anchors = []; const fr = irect(); const mid = (fr.left + fr.right) / 2;
+    const fTop = fr.top - f.top, fBot = fr.bottom - f.top; let jBelow = 0, jAbove = 0;
+    const nBelow = slots().filter((e) => rectOf(e).top >= fr.bottom - 1).length;
+    const texts = slots().filter((e) => ['title', 'body', 'close', 'action'].includes(e.dataset.slot)).map((e) => { const r = rectOf(e); return { el: e, l: r.left - f.left, r: r.right - f.left, t: r.top - f.top, b: r.bottom - f.top }; });
+    const items = slots().map((el, i) => {
+      const r = rectOf(el); const L = r.left - f.left, R = r.right - f.left, y0 = r.top - f.top + Math.min(14 * u, r.height / 2);
+      /* the nearer margin, unless another part with text sits between it and this element (a button beside a button) */
+      const clear = (s) => !texts.some((t) => t.el !== el && t.t <= y0 && y0 <= t.b && (s === 'left' ? t.l < L && t.r <= L + 1 : t.r > R && t.l >= R - 1));
+      const nearest = (r.left + r.right) / 2 > mid + 1 ? 'right' : 'left'; const other = nearest === 'left' ? 'right' : 'left';
+      const side = clear(nearest) ? nearest : clear(other) ? other : nearest;
+      const ax = side === 'left' ? L : R;
+      /* parts that share a corner (header and title) enter the same edge at different heights */
+      const ys = [r.top - f.top + Math.min(14 * u, r.height / 2), r.bottom - f.top - Math.min(10 * u, r.height / 2), (r.top + r.bottom) / 2 - f.top];
+      /* a part the frame has cut off completely cannot be pointed at: its leader ends on the frame edge, in a ring */
+      const isOut = r.top >= fr.bottom - 1 || r.bottom <= fr.top + 1; let ay;
+      if (isOut) { /* their numbers are spaced a full step apart up the frame edge, so they never spill below it */ ay = r.top >= fr.bottom - 1 ? Math.max(fTop + 8, fBot - 8 - 26 * (nBelow - 1 - jBelow++)) : fTop + 8 + 26 * jAbove++; }
+      else ay = ys.find((y) => !anchors.some((a) => a.side === side && Math.abs(a.y - y) < 10 * u && Math.abs(a.x - ax) < 40 * u)) ?? ys[0];
+      anchors.push({ side, x: ax, y: ay }); return { n: i + 1, side, ax, ay, out: isOut };
+    }).sort((a, b) => a.ay - b.ay || a.n - b.n);
+    const edge = { left: Math.min(...items.filter((i) => i.side === 'left').map((i) => i.ax)) - 8 * u, right: Math.max(...items.filter((i) => i.side === 'right').map((i) => i.ax)) + 8 * u };
+    const lastY = { left: -Infinity, right: -Infinity }; const used = { left: 0, right: 0 };
+    items.forEach((it) => {
+      const by = Math.max(it.ay, lastY[it.side] + 26); lastY[it.side] = by;
+      const k = used[it.side]++; const cx = it.side === 'left' ? Math.min(edge.left + 5 * u * k, it.ax - 6 * u) : Math.max(edge.right - 5 * u * k, it.ax + 6 * u);
+      const bx = it.side === 'left' ? -22 : f.width - 22; const ex = it.side === 'left' ? bx + 11 : bx - 11;
+      const line = document.createElementNS(NS, 'polyline'); line.setAttribute('points', `${ex},${by} ${cx},${by} ${cx},${it.ay} ${it.ax},${it.ay}`); line.setAttribute('data-n', it.n);
+      Object.entries({ fill: 'none', stroke: '#1c2026', 'stroke-width': '1.5', 'stroke-dasharray': '2 4', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => line.setAttribute(k, v)); svg.appendChild(line);
+      const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('cx', it.ax); dot.setAttribute('cy', it.ay); dot.setAttribute('r', it.out ? 4 : 3); dot.setAttribute('fill', it.out ? '#fff' : '#1c2026'); if (it.out) { dot.setAttribute('stroke', '#1c2026'); dot.setAttribute('stroke-width', '1.5'); } svg.appendChild(dot);
+      const b = document.createElement('div'); b.className = 'badge'; b.dataset.n = it.n; b.textContent = it.n; b.style.left = bx + 'px'; b.style.top = by + 'px';
+      b.onmouseenter = () => hotPart(it.n - 1, true); b.onmouseleave = () => hotPart(it.n - 1, false); b.onclick = () => togglePart(it.n - 1); /* a number on the frame selects its part too */
+      badges.appendChild(b);
+    });
+    badges.prepend(svg);
+  }
+}
+function updateStageTop() {
+  const chips = { test: 'Test: use the component', comment: 'Comment: click an element', anatomy: 'Anatomy: ' + state.view, edit: 'Edit: click an element, changes are a draft' };
+  $('#chip').textContent = chips[state.mode];
+  $('#scaleNote').textContent = state.scale < 0.995 ? `Shown at ${Math.round(state.scale * 100)}% to fit; sizes are real pixels${state.scale < 0.3 ? '. Too small to number the parts here: pick a narrower width' : ''}` : '';
+  const n = state.draft.length;
+  $('#draftStrip').innerHTML = n ? `<span class="draftpill">Draft: ${n} change${n > 1 ? 's' : ''} on this frame${state.viewingOriginal ? ' (showing original)' : ''}</span> <button class="b sm" id="toggleOrig" type="button">${state.viewingOriginal ? 'Show draft' : 'Show original'}</button> <button class="b sm" id="discardTop" type="button">Discard</button>` : '';
+  const t = $('#toggleOrig'); if (t) t.onclick = toggleOriginal; const d = $('#discardTop'); if (d) d.onclick = discardDraft;
+}
+/* A draft is a set of inline style and text changes. Showing the original puts back what each one replaced. */
+function reapplyDraft(showOriginal) {
+  if (!stage) return;
+  for (const d of [...state.draft].reverse()) { const el = resolve(d.selector); if (!el) continue; const to = showOriginal ? d.prev : d.next; if (d.property === 'text') el.textContent = to; else { el.style[d.property] = to; if (d.property === 'height') el.style.minHeight = showOriginal ? d.prevMin : '0'; if (d.property === 'width') el.style.minWidth = showOriginal ? d.prevMin : '0'; } }
+}
+function toggleOriginal() { state.viewingOriginal = !state.viewingOriginal; reapplyDraft(state.viewingOriginal); state.selected = null; drawOverlay(); updateStageTop(); renderPanel(); }
+function discardDraft() { const keep = state.selected && selectorOf(state.selected); reapplyDraft(true); state.draft = []; state.viewingOriginal = false; state.selected = keep ? resolve(keep) : null; drawOverlay(); updateStageTop(); renderPanel(); announce('Draft discarded'); }
+
+/* ---------- toolbar and controls ---------- */
+function syncModeClasses() { const parts = state.mode === 'anatomy' && state.view === 'parts'; if (sdoc) sdoc.documentElement.classList.toggle('reax-parts', parts); $('#fw').classList.toggle('gutter', state.mode === 'anatomy'); /* the margin stays in every Anatomy view so the frame never jumps */ fit(); }
+function setMode(m) { state.mode = m; if (m === 'test') state.selected = null; hl.style.display = 'none'; syncModeClasses(); updateToolbar(); updateStageTop(); drawOverlay(); renderPanel(); announce(MODE_LABEL[m] + ' mode'); }
+$$('#modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$$('#presets button').forEach((b) => b.addEventListener('click', () => setWidth(Number(b.dataset.w))));
+$('#wInput').addEventListener('change', (e) => setWidth(Number(e.target.value) || state.width));
+$('#t200').addEventListener('change', (e) => { state.t200 = e.target.checked; if (sdoc) { sdoc.documentElement.style.fontSize = state.t200 ? '200%' : ''; buildTokens(); } drawOverlay(); renderPanel(); });
+$('#story').addEventListener('change', (e) => loadStory(e.target.value));
+function syncControls() { if ($('#controls').open !== WIDE.matches && (WIDE.matches || !state.userToggledControls)) $('#controls').open = WIDE.matches; }
+$('#controls').addEventListener('toggle', () => { if (!WIDE.matches) state.userToggledControls = true; });
+window.addEventListener('resize', () => { fit(); updateStageTop(); drawOverlay(); syncControls(); });
+
+/* frame resize: pointer and keyboard */
+const handle = $('#handle');
+/* One pointer owns a drag. A second finger is ignored, and the drag ends cleanly if the browser cancels it, capture is lost, or the window loses focus. */
+let drag = null;
+function endDrag() { if (!drag) return; const id = drag.id; drag = null; try { handle.releasePointerCapture(id); } catch {} renderPanel(); }
+handle.addEventListener('pointerdown', (e) => { if (drag) return; drag = { id: e.pointerId, left: $('#scaler').getBoundingClientRect().left }; try { handle.setPointerCapture(e.pointerId); } catch {} });
+handle.addEventListener('pointermove', (e) => { if (drag && e.pointerId === drag.id) setWidth((e.clientX - drag.left) / state.scale); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach((t) => handle.addEventListener(t, (e) => { if (drag && e.pointerId === drag.id) endDrag(); }));
+window.addEventListener('blur', endDrag);
+handle.addEventListener('keydown', (e) => { const step = e.shiftKey ? 50 : 10; if (e.key === 'ArrowRight' || e.key === 'ArrowUp') setWidth(state.width + step); else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') setWidth(state.width - step); else if (e.key === 'Home') setWidth(MIN_W); else if (e.key === 'End') setWidth(MAX_W); else return; e.preventDefault(); });
+
+/* width sweep: walk down from the current width until the first break. The rule: no clipping and every button at least 24px. */
+$('#sweep').addEventListener('click', () => {
+  const start = state.width; let lastOk = null; let firstBreak = null;
+  for (let w = start; w >= MIN_W; w -= 10) { setWidth(w, true); const p = checkLayout(); if (p.length) { firstBreak = { w, problems: p }; break; } lastOk = w; }
+  state.sweep = { start, lastOk, firstBreak, draft: state.draft.length, original: state.viewingOriginal };
+  setWidth(start); renderPanel();
+  announce(firstBreak ? (lastOk ? `Works down to ${lastOk} pixels, breaks at ${firstBreak.w}` : `Breaks already at ${start} pixels`) : 'No break found');
+});
+
+/* ---------- picking ---------- */
+function pickable(e) { const el = slotOf(e.target); return el && stage && stage.contains(el) ? el : null; }
+function onMove(e) { if (state.mode === 'test') return; const el = pickable(e); if (!el) { hl.style.display = 'none'; return; } place(hl, el); }
+function onClick(e) {
+  if (state.mode === 'test') return; e.preventDefault(); e.stopPropagation();
+  const el = pickable(e); if (!el) return;
+  if (state.mode === 'edit' && state.viewingOriginal) { announce('Showing the original. Switch back to the draft to edit.'); return; }
+  select(el);
+}
+function select(el) { state.selected = el; drawOverlay(); renderPanel(); openSheet(true); announce(`Selected ${el.dataset.slot}, ${roleOf(el)}`); }
+function deselect() { state.selected = null; hl.style.display = 'none'; drawOverlay(); renderPanel(); }
+function togglePart(i) { const el = slots()[i]; if (!el) return; if (state.selected === el) deselect(); else select(el); }
+/* light up one part: its number, its leader and its place on the frame */
+function hotPart(i, on) {
+  const el = slots()[i]; if (!el) return;
+  $$(`.badge[data-n="${i + 1}"]`).forEach((b) => b.classList.toggle('hot', on));
+  $$(`#badges polyline[data-n="${i + 1}"]`).forEach((l) => { l.setAttribute('stroke', on ? '#5b3fd0' : '#1c2026'); l.setAttribute('stroke-width', on ? '2.5' : '1.5'); });
+  if (on) place(hl, el); else hl.style.display = 'none';
+}
+function openSheet(open) { rail.classList.toggle('open', open); $('#sheetBar').setAttribute('aria-expanded', String(open)); }
+$('#sheetBar').addEventListener('click', () => openSheet(!rail.classList.contains('open')));
+document.addEventListener('keydown', (e) => {
+  const t = e.target; if (t.matches && t.matches('input,textarea,select')) { if (e.key === 'Escape') t.blur(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape') { if (state.selected) deselect(); else openSheet(false); return; }
+  const m = { 1: 'test', 2: 'comment', 3: 'anatomy', 4: 'edit' }[e.key]; if (m) setMode(m);
+});
+
+/* ---------- comments ---------- */
+async function loadState() { const s = await api('/state'); state.comments = s.comments; state.viewports = s.viewports; drawOverlay(); renderPanel(); }
+async function saveComment(text, send) {
+  const el = state.selected; let c; try { c = await api('/comments', 'POST', { text, story: state.story, viewport: state.width, textScale: state.t200 ? 200 : 100, selector: selectorOf(el), role: roleOf(el), name: nameOf(el), box: boxOf(el), component: state.stories.find((x) => x.id === state.story)?.title, sent: !!send }); } catch { announce('Could not save the comment'); return; }
+  state.comments.push(c); deselect(); announce(send ? 'Comment saved and sent to Claude' : 'Comment saved');
+}
+async function patchComment(id, patch) { let c; try { c = await api('/comments/' + id, 'PATCH', patch); } catch { return; } state.comments = state.comments.map((x) => (x.id === id ? c : x)); drawOverlay(); renderPanel(); }
+async function removeComment(id) { await api('/comments/' + id, 'DELETE'); state.comments = state.comments.filter((x) => x.id !== id); drawOverlay(); renderPanel(); announce('Comment removed'); }
+
+/* ---------- edit mode ---------- */
+function applyEdit(el, f, tokenName) {
+  const before = currentToken(el, f); const sel2 = selectorOf(el);
+  const old = state.draft.find((d) => d.selector === sel2 && d.property === f.key);
+  const prev = old ? old.prev : el.style[f.key]; const prevMin = old ? old.prevMin : el.style.minHeight;
+  el.style[f.key] = tokenName ? `var(${tokenName})` : prev;
+  if (tokenName && f.key === 'height') el.style.minHeight = '0'; if (tokenName && f.key === 'width') el.style.minWidth = '0';
+  state.draft = state.draft.filter((d) => d !== old);
+  if (tokenName) state.draft.push({ selector: sel2, property: f.key, from: old ? old.from : before, to: tokenName, prev, prevMin, next: `var(${tokenName})` });
+  afterDraftChange();
+}
+function afterDraftChange() { drawOverlay(); updateStageTop(); refreshDraft(); }
+function editWarnings() {
+  const w = [];
+  slots().forEach((el) => {
+    const [bw, bh] = sizeOf(el);
+    if (isTarget(el) && (bw < FLOOR || bh < FLOOR)) w.push({ selector: selectorOf(el), text: `${el.dataset.slot} target is ${bw}x${bh}px, below the ${FLOOR}px floor` });
+    if (textOwn(el)) { const cr = contrast(rgb(getComputedStyle(el).color), bgOf(el)); if (cr < 4.5) w.push({ selector: selectorOf(el), text: `${el.dataset.slot} text contrast is ${cr.toFixed(1)}:1, below 4.5:1` }); }
+  });
+  return w;
+}
+
+/* ---------- rail ---------- */
+function sheetTitle() {
+  const n = state.comments.filter((c) => c.kind !== 'accepted-exception' && c.story === state.story).length;
+  const s = state.selected ? state.selected.dataset.slot : null;
+  if (state.mode === 'test') return `Test · ${n} comment${n === 1 ? '' : 's'}`;
+  return `${MODE_LABEL[state.mode]} · ${s ? 'selected ' + s : 'nothing selected'}`;
+}
+function renderPanel() {
+  let h = '';
+  if (state.mode === 'test') h += `<h3>Test</h3><p class="note">Use the component as a user would: Tab through it, press the buttons, change the story, resize the frame, switch to 200% text.</p>`;
+  if (state.mode === 'comment') h += commentPanel();
+  if (state.mode === 'anatomy') h += anatomyPanel();
+  if (state.mode === 'edit') h += editPanel();
+  h += sweepPanel() + viewportsPanel() + commentList();
+  panel.innerHTML = h; bindPanel(); bindDraft(); $('#sheetTitle').textContent = sheetTitle();
+  rail.classList.toggle('compact', state.mode === 'anatomy');
+}
+function selectedCard() {
+  const el = state.selected; if (!el) return '';
+  const b = boxOf(el);
+  return `<div class="card"><div class="card-h"><strong>${esc(el.dataset.slot)}</strong><span class="note">${esc(roleOf(el))} “${esc(nameOf(el))}”</span></div><div class="note">${b.w}×${b.h}px at ${state.width}px wide, ${state.t200 ? 200 : 100}% text · <code>${esc(selectorOf(el))}</code></div><div class="actions"><button class="b sm" id="desel" type="button">Deselect (Esc)</button></div></div>`;
+}
+function sweepPanel() {
+  const s = state.sweep; if (!s) return '';
+  const base = s.draft && !s.original ? `<div class="caution">Ran on the draft (${s.draft} change${s.draft > 1 ? 's' : ''}), not the original component.</div>` : '';
+  const body = s.firstBreak
+    ? (s.lastOk ? `<div class="alert">Works down to <strong>${s.lastOk}px</strong>. Breaks at ${s.firstBreak.w}px: ${esc(s.firstBreak.problems.join('; '))}.</div>` : `<div class="alert">Already breaks at ${s.start}px: ${esc(s.firstBreak.problems.join('; '))}.</div>`)
+    : `<div class="good">No break found from ${s.start}px down to ${MIN_W}px.</div>`;
+  return `<h3>Narrowest width</h3>${base}${body}<p class="note">Rule: no clipping, and every button at least ${FLOOR}px.</p><div class="actions">${s.lastOk ? `<button class="b sm" id="pin" type="button">Pin ${s.lastOk}px as an automated capture</button>` : ''}<button class="b sm" id="dismissSweep" type="button">Dismiss</button></div>`;
+}
+function viewportsPanel() {
+  if (!state.viewports.length) return '';
+  return `<h3>Pinned widths</h3><div class="actions">${state.viewports.map((w) => `<span class="tag">${w}px <button class="b sm" data-unpin="${w}" type="button" aria-label="Unpin ${w} pixels">Unpin</button></span>`).join('')}</div>`;
+}
+function commentList() {
+  const list = state.comments.filter((c) => c.kind !== 'accepted-exception' && c.story === state.story); const ex = state.comments.filter((c) => c.kind === 'accepted-exception' && c.story === state.story);
+  let h = `<h3>Comments (${list.length})</h3>`;
+  h += list.map((c) => `<div class="comment" data-id="${c.id}"><div><span class="tag ${c.status}">${c.status}</span> <strong>#${c.id.slice(1)}</strong> <code>${esc(c.selector)}</code></div><div>${esc(c.text)}</div><div class="note">${esc(c.component || c.story)} · ${esc(c.role)} “${esc(c.name)}” · ${c.viewport}px · ${c.textScale}% text${c.sent ? ' · sent to Claude' : ''}</div><div class="actions"><button class="b sm" data-act="addressed" data-id="${c.id}" type="button">Mark addressed</button><button class="b sm" data-act="resolved" data-id="${c.id}" type="button">Resolve</button>${c.status === 'open' && !c.sent ? `<button class="b sm" data-remove="${c.id}" type="button">Remove</button>` : ''}</div></div>`).join('') || '<p class="note">No comments yet.</p>';
+  if (list.length) h += '<p class="note">Pins on the frame: filled is open or addressed, a ring is resolved. Only you resolve a comment.</p>';
+  if (ex.length) h += `<h3>Accepted exceptions</h3>` + ex.map((c) => `<div class="comment"><span class="tag resolved">known</span> ${esc(c.text)}</div>`).join('');
+  return h;
+}
+function commentPanel() {
+  const el = state.selected; let h = `<h3>Comment</h3>`;
+  if (!stage) return h + '<p class="note">Loading the story.</p>';
+  if (!slots().length) return h + '<p class="note">This story has no <code>data-slot</code> parts to comment on yet. Components made with reax mark their parts.</p>';
+  if (!el) return h + `<p class="note">Click an element in the frame to attach a comment.</p>`;
+  return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div>`;
+}
+/* which parts the frame cuts off: out = wholly outside it, cut = at least partly outside it */
+function frameFit() {
+  const fr = irect();
+  return slots().map((e) => { const r = rectOf(e); const out = r.top >= fr.bottom - 1 || r.bottom <= fr.top + 1 || r.left >= fr.right - 1 || r.right <= fr.left + 1; return { out, cut: out || r.bottom > fr.bottom + 1 || r.top < fr.top - 1 || r.right > fr.right + 1 || r.left < fr.left - 1 }; });
+}
+/* The style the browser gives a bare element of this kind, read from a blank page. A value that matches it is a browser default: nothing in the component set it. */
+let uaFrame;
+function uaStyle(tag) {
+  try {
+    if (!uaFrame) { uaFrame = document.createElement('iframe'); uaFrame.setAttribute('aria-hidden', 'true'); uaFrame.tabIndex = -1; uaFrame.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden'; document.body.appendChild(uaFrame); }
+    const d = uaFrame.contentDocument; const e = d.createElement(tag); d.body.appendChild(e); const cs = uaFrame.contentWindow.getComputedStyle(e);
+    const out = { padding: ['Top', 'Right', 'Bottom', 'Left'].map((k) => px(cs['padding' + k])).join(' '), borderRadius: px(cs.borderTopLeftRadius), fontSize: px(cs.fontSize), color: cs.color, backgroundColor: cs.backgroundColor };
+    d.body.removeChild(e); return out;
+  } catch { return null; }
+}
+const ownValue = (el, k) => { const cs = getComputedStyle(el); return k === 'padding' ? ['Top', 'Right', 'Bottom', 'Left'].map((s) => px(cs['padding' + s])).join(' ') : k === 'borderRadius' ? px(cs.borderTopLeftRadius) : k === 'fontSize' ? px(cs.fontSize) : cs[k]; };
+function tokensView(el, isDefault) {
+  const ua = uaStyle(el.tagName.toLowerCase()); const tag = el.tagName.toLowerCase();
+  const fromTokens = [], notTokens = [], unset = [];
+  ['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].forEach((k) => {
+    const f = FIELDS[k]; const text = currentToken(el, f); const sw = (text.match(/#[0-9a-f]{6}/i) || [])[0];
+    const head = `<span class="item-h"><span>${f.label}</span>${sw ? `<span class="sw" style="background:${sw}" aria-hidden="true"></span>` : ''}<code>${esc(text)}</code></span>`;
+    if (/^none /.test(text)) { unset.push(f.label.toLowerCase()); return; }
+    if (!/\(no token\)|\(sides differ\)/.test(text)) { fromTokens.push(`<div class="item">${head}</div>`); return; }
+    const isUA = ua && ua[k] !== undefined && ua[k] === ownValue(el, k);
+    /* if the browser's defaults cannot be read here (a sandboxed page), say only what is known instead of guessing */
+    const label = k === 'height' ? 'from layout' : !ua ? 'no token' : isUA ? 'browser default' : 'raw value';
+    const why = k === 'height' ? 'Set by the layout, not by a size token.' : !ua ? 'No token matches it. The browser defaults could not be checked here.' : isUA ? `The browser's own style for a ${tag}. Nothing in the component sets it.` : 'Set in the component as a raw value. No token matches it.';
+    notTokens.push(`<div class="item">${head}<div class="note"><span class="tag${k === 'height' ? '' : ' warn'}">${label}</span> ${esc(why)}</div></div>`);
+  });
+  const grp = (title, items, empty) => `<h4 class="grp">${title} (${items.length})</h4>` + (items.length ? `<div class="list">${items.join('')}</div>` : `<p class="note">${empty}</p>`);
+  return (isDefault ? '<p class="note">Showing the outer part. Select a part to see its tokens.</p>' : '')
+    + grp('From tokens', fromTokens, 'Nothing on this part uses a token.')
+    + grp('Not from tokens', notTokens, 'Everything on this part uses a token.')
+    + '<p class="note">A value is not from a token when the browser supplies it or the component hard-codes it, instead of taking it from <code>DESIGN.md</code>.</p>'
+    + (unset.length ? `<p class="note">No ${unset.length > 1 ? unset.slice(0, -1).join(', ') + ' or ' + unset[unset.length - 1] : unset[0]} set on this part.</p>` : '');
+}
+function setFrameH(h) { state.frameH = h; fit(); drawOverlay(); updateStageTop(); renderPanel(); }
+function fitNotice() {
+  const cut = frameFit().map((f, i) => (f.cut ? i + 1 : 0)).filter(Boolean); let h = '';
+  if (cut.length) h += `<div class="caution">${cut.length === 1 ? 'Part' : 'Parts'} ${cut.join(', ')} ${cut.length === 1 ? 'is' : 'are'} cut off by the frame, so ${cut.length === 1 ? 'it is' : 'they are'} not fully visible here. <button class="b sm" id="growFrame" type="button">Grow frame to fit</button></div>`;
+  if (state.frameH !== FRAME_H) h += `<p class="note">Frame grown to ${state.frameH}px. <button class="b sm" id="resetFrame" type="button">Reset height</button></p>`;
+  return h;
+}
+function typeText(a) {
+  const t = a && a.type; if (!t) return 'unknown'; if (typeof t === 'string') return t;
+  if (t.name === 'enum' && Array.isArray(a.options)) return a.options.map((o) => JSON.stringify(o).replace(/"/g, "'")).join(' | ');
+  if (t.name === 'enum' && Array.isArray(t.value)) return t.value.map((o) => String(o.value ?? o)).join(' | ');
+  return t.name || (t.required === false ? 'unknown (optional)' : 'unknown');
+}
+function propsView() {
+  if (!state.argTypes) return '<p class="note">Storybook did not report the props of this story.</p>';
+  const names = [...new Set([...Object.keys(state.argTypes), ...Object.keys(state.args || {})])].filter((n) => !/^on[A-Z]/.test(n) || state.argTypes[n]);
+  if (!names.length) return '<p class="note">This component declares no props in Storybook.</p>';
+  const rows = names.map((n) => { const a = state.argTypes[n] || {}; const cur = state.args && n in state.args ? state.args[n] : undefined; const def = a.table && a.table.defaultValue && a.table.defaultValue.summary;
+    return `<div class="item"><div class="item-h"><code>${esc(n)}</code><span class="note">${esc(typeText(a))}${a.table && a.table.type && a.table.type.summary && typeText(a) === 'unknown' ? esc(a.table.type.summary) : ''}</span></div>${a.description ? `<div class="note">${esc(a.description)}</div>` : ''}<div class="val">${cur !== undefined ? `value <code>${esc(typeof cur === 'string' ? JSON.stringify(cur) : typeof cur === 'object' ? '(object)' : String(cur))}</code>` : ''}${def ? ` default <code>${esc(def)}</code>` : ''}</div></div>`; }).join('');
+  return `<p class="note">Props of this story, as Storybook reports them. They come from the component's types and JSDoc.</p><div class="list">${rows}</div>`;
+}
+function anatomyPanel() {
+  const tabs = ['parts', 'props', 'tokens', 'accessibility'];
+  let h = `<h3>Anatomy</h3>${selectedCard()}${fitNotice()}<div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" id="tab-${t}" data-view="${t}" aria-selected="${state.view === t}" aria-controls="anatomyPanel" tabindex="${state.view === t ? 0 : -1}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
+  const head = h;
+  const parts = slots(); const selIdx = state.selected ? parts.indexOf(state.selected) : -1;
+  if (!stage) h += '<p class="note">Loading the story.</p>';
+  else if (!parts.length && state.view !== 'props') h += '<p class="note">This story has no <code>data-slot</code> parts yet. Components made with reax mark every part with <code>data-slot</code>, so Anatomy can list and number them.</p>';
+  else {
+    const fitInfo = frameFit();
+    /* a row is a button: it selects the part, and hovering or focusing it lights up the part on the frame */
+    const row = (e, i, note, tag) => `<button type="button" class="item item-btn${i === selIdx ? ' sel' : ''}" data-part="${i}" aria-pressed="${i === selIdx}"><span class="item-h"><span class="num">${i + 1}</span><code>${esc(e.dataset.slot)}</code>${tag || ''}${fitInfo[i].out ? '<span class="tag bad">outside frame</span>' : fitInfo[i].cut ? '<span class="tag warn">cut off</span>' : ''}</span><span class="note">${note}</span></button>`;
+    if (state.view === 'parts') h += `<p class="note">Select a part here or on the frame. Numbers match the frame.</p><div class="list">${parts.map((e, i) => row(e, i, `${e.tagName.toLowerCase()} · ${roleLabel(e)}${(isTarget(e) || /^H[1-6]$/.test(e.tagName)) && nameOf(e) ? ` · “${esc(nameOf(e))}”` : ''}`)).join('')}</div>`;
+    if (state.view === 'props') h += propsView();
+    if (state.view === 'tokens') h += tokensView(state.selected || parts[0], !state.selected);
+    if (state.view === 'accessibility') { const focus = $$(FOCUSABLE, stage); h += `<div class="list">${parts.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return row(e, i, `${roleLabel(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : isTarget(e) ? ' · <em>no accessible name</em>' : ''}`, isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ` · under ${FLOOR}px` : ''}</span>` : ''); }).join('')}</div><h4 class="grp">Tab order</h4>${focus.length ? `<ol>${focus.map((f) => `<li>${esc(nameOf(f) || f.tagName.toLowerCase())}</li>`).join('')}</ol>` : '<p class="note">Nothing in this story can take focus.</p>'}<p class="note">Tab order follows the order of the elements in the markup. Buttons and other controls smaller than ${FLOOR}×${FLOOR}px are flagged: that is the minimum target size in WCAG 2.2 level AA.</p>`; }
+  }
+  return head + `<div role="tabpanel" id="anatomyPanel" aria-labelledby="tab-${state.view}" tabindex="0">` + h.slice(head.length) + '</div>';
+}
+function editPanel() {
+  const el = state.selected; let h = `<h3>Edit</h3>`;
+  if (stage && !slots().length) return h + '<p class="note">This story has no <code>data-slot</code> parts to edit yet.</p>';
+  if (!el) return h + `<p class="note">Click an element to change its text and tokens. Edits are a live draft until you press Apply.</p><div id="draftWrap">${draftBlock()}</div>`;
+  h += selectedCard();
+  if (!el.children.length && textOwn(el)) h += `<div class="row"><label for="etext">Text</label><input type="text" id="etext" value="${esc(el.textContent.trim())}"></div>`;
+  const field = (k) => { const f = FIELDS[k]; const cur = (state.draft.find((d) => d.selector === selectorOf(el) && d.property === f.key) || {}).to; return `<div class="row"><label for="f-${f.key}">${f.label}</label><select id="f-${f.key}" data-key="${f.key}"><option value="">Keep ${esc(cur ? 'original' : currentToken(el, f))}</option>${Object.entries(TOKENS[f.group]).map(([n, v]) => `<option value="${n}"${n === cur ? ' selected' : ''}>${esc(n)} (${esc(v.raw)})</option>`).join('')}</select></div>`; };
+  h += PRIMARY.map(field).join('') + `<details class="more"><summary>Size</summary>${MORE.map(field).join('')}</details>`;
+  return h + `<div id="draftWrap">${draftBlock()}</div>`;
+}
+function draftBlock() {
+  const w = editWarnings(); let h = `<h3>Draft (${state.draft.length})</h3>`;
+  h += state.draft.map((d) => `<div class="card"><code>${esc(d.selector)}</code> ${esc(d.property)}: ${esc(d.from)} → <code>${esc(d.to)}</code></div>`).join('') || '<p class="note">No changes yet.</p>';
+  h += w.map((x) => `<div class="alert">${esc(x.text)}</div>`).join('');
+  if (state.draft.length) h += (w.length ? `<label class="chk"><input type="checkbox" id="accept"> I accept these accessibility exceptions</label>` : '') + `<div class="actions"><button class="b pri" id="apply" type="button" ${w.length ? 'disabled' : ''}>Apply: send to Claude</button><button class="b" id="discard" type="button">Discard draft</button></div><p class="note">Apply sends one structured change set. Claude writes it to code using the tokens above.</p>`;
+  if (state.receipt) h += `<div class="good">${esc(state.receipt)}</div>`;
+  return h;
+}
+function refreshDraft() { const wrap = $('#draftWrap'); if (!wrap) return; wrap.innerHTML = draftBlock(); bindDraft(); }
+function bindDraft() {
+  const ap = $('#apply'), ac = $('#accept'), ds = $('#discard');
+  if (ac && ap) ac.onchange = () => (ap.disabled = !ac.checked);
+  if (ds) ds.onclick = discardDraft;
+  if (ap) ap.onclick = async () => {
+    const warnings = editWarnings(); const accepted = warnings.length > 0; const n = state.draft.length;
+    try { await api('/apply', 'POST', { story: state.story, component: (state.stories.find((x) => x.id === state.story) || {}).title, viewport: state.width, textScale: state.t200 ? 200 : 100, changes: state.draft.map(({ selector, property, from, to }) => ({ selector, property, from, to })), warnings, acceptedExceptions: accepted });
+    if (accepted) for (const x of warnings) { const c = await api('/comments', 'POST', { kind: 'accepted-exception', text: x.text, story: state.story, selector: x.selector, status: 'resolved' }); state.comments.push(c); } } catch { announce('Could not send the changes'); return; }
+    state.draft = []; state.receipt = `Sent ${n} change${n > 1 ? 's' : ''} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Claude writes them to code.`;
+    updateStageTop(); drawOverlay(); renderPanel(); announce(state.receipt);
+  };
+}
+function bindPanel() {
+  const pin = $('#pin'); if (pin) pin.onclick = async () => { state.viewports = await api('/viewports', 'POST', { width: state.sweep.lastOk }); renderPanel(); };
+  const dis = $('#dismissSweep'); if (dis) dis.onclick = () => { state.sweep = null; renderPanel(); };
+  $$('[data-unpin]').forEach((b) => (b.onclick = async () => { state.viewports = await api('/viewports/' + b.dataset.unpin, 'DELETE'); renderPanel(); }));
+  $$('[data-act]').forEach((b) => (b.onclick = () => patchComment(b.dataset.id, { status: b.dataset.act })));
+  $$('[data-remove]').forEach((b) => (b.onclick = () => removeComment(b.dataset.remove)));
+  $$('.comment[data-id]').forEach((c) => { const on = (v) => () => { const p = $(`.pin[data-id="${c.dataset.id}"]`); if (p) p.classList.toggle('hot', v); }; c.onmouseenter = on(true); c.onmouseleave = on(false); });
+  const d = $('#desel'); if (d) d.onclick = deselect;
+  $$('[data-part]').forEach((b) => {
+    const i = Number(b.dataset.part);
+    b.onclick = () => { const el = slots()[i]; if (state.selected === el) deselect(); else select(el); const nb = $(`[data-part="${i}"]`); if (nb) nb.focus(); }; /* the panel re-renders: keep the keyboard on the same row */
+    b.onmouseenter = b.onfocus = () => hotPart(i, true); b.onmouseleave = b.onblur = () => hotPart(i, false);
+  });
+  const cs = $('#csave'), cd = $('#csend');
+  if (cs) cs.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, false); };
+  if (cd) cd.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, true); };
+  const goView = (v, focus) => { state.view = v; syncModeClasses(); updateStageTop(); drawOverlay(); renderPanel(); if (focus) { const t = $(`#tab-${v}`); if (t) t.focus(); } };
+  $$('#views button').forEach((b) => {
+    b.onclick = () => goView(b.dataset.view, false);
+    b.onkeydown = (e) => { const order = ['parts', 'props', 'tokens', 'accessibility']; const i = order.indexOf(b.dataset.view); const to = { ArrowRight: order[(i + 1) % 4], ArrowLeft: order[(i + 3) % 4], Home: order[0], End: order[3] }[e.key]; if (to) { e.preventDefault(); goView(to, true); } };
+  });
+  const gf = $('#growFrame'); if (gf) gf.onclick = () => setFrameH(Math.max(FRAME_H, Math.ceil(Math.max(...slots().map((e) => e.getBoundingClientRect().bottom))) + 24));
+  const rf = $('#resetFrame'); if (rf) rf.onclick = () => setFrameH(FRAME_H);
+  const et = $('#etext'); if (et) et.oninput = () => { const el = state.selected, s = selectorOf(el); const old = state.draft.find((x) => x.selector === s && x.property === 'text'); const prev = old ? old.prev : el.textContent; el.textContent = et.value; state.draft = state.draft.filter((x) => x !== old); if (et.value !== prev) state.draft.push({ selector: s, property: 'text', from: JSON.stringify(prev), to: JSON.stringify(et.value), prev, next: et.value }); afterDraftChange(); };
+    $$('select[data-key]').forEach((s) => (s.onchange = () => applyEdit(state.selected, FIELDS[s.dataset.key], s.value)));
+}
+
+async function start() {
+  $('#project').textContent = BOOT.project || '';
+  try { const r = await fetch('/index.json'); const j = await r.json(); state.stories = Object.values(j.entries || j.stories || {}).filter((e) => (e.type || 'story') === 'story'); } catch { state.stories = []; }
+  const by = {}; state.stories.forEach((x) => (by[x.title] ||= []).push(x));
+  const focus = new Set(BOOT.focus || []);
+  $('#story').innerHTML = Object.entries(by).map(([t, list]) => `<optgroup label="${esc(t)}${list.some((x) => focus.has(x.id)) ? ' (changed)' : ''}">${list.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
+  setWidth(390); syncControls(); loadState();
+  loadStory(state.story);
+}
+start();
+</script>
+</body>
+</html>
