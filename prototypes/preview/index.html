@@ -107,6 +107,14 @@
   .tabs button[aria-selected="true"] { border-bottom-color:var(--accent); color:var(--ui-ink); font-weight:600; }
   details.more { margin:8px 0; } details.more summary { cursor:pointer; color:var(--ui-muted); }
   .actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  /* stacked rows instead of columns: nothing depends on the rail's width, long values wrap */
+  .list .item { padding:8px 0; border-bottom:1px solid var(--ui-line); }
+  .item-h { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+  .item-h .tag { margin-left:auto; }
+  .tag.bad { background:var(--bad-wash); color:var(--bad); }
+  .num { display:inline-grid; place-items:center; min-width:20px; height:20px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; font-variant-numeric:tabular-nums; align-self:center; }
+  .val { margin-top:4px; }
+  .banner .short { display:none; }
 
   /* the component under test: Dialog / Confirm */
   .dialog { background:var(--color-surface); color:var(--color-text); border-radius:var(--radius-lg); padding:var(--space-5); width:100%; max-width:520px; box-shadow:0 12px 40px rgba(0,0,0,.3); }
@@ -126,10 +134,13 @@
     .stage-wrap { padding:12px 12px 84px; }
     #rail { position:fixed; left:0; right:0; bottom:0; max-height:56vh; z-index:30; border-left:0; border-top:1px solid var(--ui-line); box-shadow:0 -8px 24px rgba(0,0,0,.14); transform:translateY(calc(100% - 52px)); transition:transform .22s cubic-bezier(.16,1,.3,1); }
     #rail.open { transform:none; }
+    #rail.compact { max-height:40vh; } /* Parts is a diagram-to-list task: keep the frame in view above the sheet */
+    .banner { padding:4px 8px 4px 12px; margin-bottom:8px; } .banner .long { display:none; } .banner .short { display:inline; }
     .sheet-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:52px; padding:0 16px; border:0; background:var(--ui-panel); font:inherit; font-weight:600; color:var(--ui-ink); cursor:pointer; text-align:left; }
     .chev { width:10px; height:10px; border-right:2px solid var(--ui-muted); border-bottom:2px solid var(--ui-muted); transform:rotate(-135deg); transition:transform .2s; }
     #rail.open .chev { transform:rotate(45deg); }
   }
+  @media (pointer:coarse) { .b.sm, .tabs button, .seg button, select, input[type=number] { min-height:40px; } }
   @media (prefers-reduced-motion:reduce) { #rail, .chev { transition:none; } }
 </style>
 </head>
@@ -168,7 +179,7 @@
 <main class="layout">
   <section class="stage-wrap" id="stageWrap" aria-label="Preview">
     <div id="demoBanner" class="banner" hidden>
-      <span>Demo mode: no helper server, so comments and edits live in this tab only. Run <code>node prototypes/preview/server.mjs</code> locally to save them.</span>
+      <span class="long">Demo mode: no helper server, so comments and edits live in this tab only. Run <code>node prototypes/preview/server.mjs</code> locally to save them.</span><span class="short">Demo mode: changes stay in this tab.</span>
       <button class="b sm" id="dismissDemo" type="button">Dismiss</button>
     </div>
     <div class="stage-top"><span class="chip" id="chip"></span><span class="note" id="scaleNote"></span><span id="draftStrip"></span></div>
@@ -266,7 +277,7 @@ const roleOf = (el) => el.getAttribute('role') || IMPLICIT[el.tagName] || 'gener
 function nameOf(el) {
   if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
   const by = el.getAttribute('aria-labelledby'); if (by && document.getElementById(by)) return document.getElementById(by).textContent.trim();
-  return el.textContent.trim().replace(/\s+/g, ' ').slice(0, 60);
+  const t = el.textContent.trim().replace(/\s+/g, ' '); return t.length > 60 ? t.slice(0, 59) + '…' : t;
 }
 /* sizes are in the component's own pixels, so they are divided by the frame's display scale */
 const boxOf = (el) => { const f = frame.getBoundingClientRect(), r = el.getBoundingClientRect(), S = state.scale; return { x: Math.round((r.left - f.left) / S), y: Math.round((r.top - f.top) / S), w: Math.round(r.width / S), h: Math.round(r.height / S) }; };
@@ -478,6 +489,7 @@ function renderPanel() {
   if (state.mode === 'edit') h += editPanel();
   h += sweepPanel() + viewportsPanel() + (state.mode === 'comment' ? '' : '') + commentList();
   panel.innerHTML = h; bindPanel(); bindDraft(); $('#sheetTitle').textContent = sheetTitle();
+  rail.classList.toggle('compact', state.mode === 'anatomy' && state.view === 'parts');
 }
 function selectedCard() {
   const el = state.selected; if (!el) return '';
@@ -514,9 +526,9 @@ function anatomyPanel() {
   let h = `<h3>Anatomy</h3><div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" data-view="${t}" aria-selected="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
   const slots = $$('[data-slot]', stage);
   if (state.view === 'parts') h += `<p class="note">Numbers on the frame match this list.</p><table><tr><th>#</th><th>slot</th><th>element</th><th>role</th></tr>${slots.map((e, i) => `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code>${isTarget(e) || e.tagName === 'H2' ? `<div class="note">“${esc(nameOf(e))}”</div>` : ''}</td><td>${e.tagName.toLowerCase()}</td><td>${roleOf(e)}</td></tr>`).join('')}</table>`;
-  if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent.slice(0, 40) + '…')], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><table><tr><th>prop</th><th>type</th><th>value</th></tr>${rows.map((r) => `<tr><td><code>${r[0]}</code></td><td>${esc(r[1])}</td><td><code>${esc(r[2])}</code></td></tr>`).join('')}</table>`; }
+  if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent)], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><div class="list">${rows.map((r) => `<div class="item"><div class="item-h"><code>${r[0]}</code><span class="note">${esc(r[1])}</span></div><div class="val"><code>${esc(r[2])}</code></div></div>`).join('')}</div>`; }
   if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? selectedCard() : '<p class="note">Showing the dialog. Click an element to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
-  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<table><tr><th>#</th><th>slot</th><th>role</th><th>name</th><th>size</th></tr>${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code></td><td>${roleOf(e)}</td><td>${esc(nameOf(e)) || '<em>none</em>'}</td><td>${isTarget(e) ? `<span class="tag" style="${bad ? 'background:var(--bad-wash);color:var(--bad)' : ''}">${w}×${hh}${bad ? ' too small' : ''}</span>` : '–'}</td></tr>`; }).join('')}</table><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
+  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<div class="list">${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return `<div class="item"><div class="item-h"><span class="num">${i + 1}</span><code>${e.dataset.slot}</code>${isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ' too small' : ''}</span>` : ''}</div><div class="note">${roleOf(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : ' · <em>no accessible name</em>'}</div></div>`; }).join('')}</div><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
   return h;
 }
 function editPanel() {
