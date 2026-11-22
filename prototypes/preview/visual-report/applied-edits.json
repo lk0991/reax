@@ -1,0 +1,29 @@
+[
+  {
+    "id": "e1",
+    "createdAt": "2026-11-22T11:17:39.978Z",
+    "story": "short",
+    "viewport": 390,
+    "changes": [
+      {
+        "selector": "[data-slot=\"close\"]",
+        "property": "height",
+        "from": "--size-32 (32px)",
+        "to": "--size-16"
+      },
+      {
+        "selector": "[data-slot=\"close\"]",
+        "property": "width",
+        "from": "--size-32 (32px)",
+        "to": "--size-16"
+      }
+    ],
+    "warnings": [
+      {
+        "selector": "[data-slot=\"close\"]",
+        "text": "close target is 16x16px, below the 24px floor"
+      }
+    ],
+    "acceptedExceptions": true
+  }
+]

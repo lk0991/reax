@@ -1,0 +1,51 @@
+[
+  {
+    "id": "c1",
+    "status": "resolved",
+    "createdAt": "2026-11-22T11:17:38.976Z",
+    "text": "Close button looks unfinished: needs an icon and more padding.",
+    "story": "short",
+    "viewport": 390,
+    "textScale": 100,
+    "selector": "[data-slot=\"close\"]",
+    "role": "button",
+    "name": "Close",
+    "box": {
+      "x": 325,
+      "y": 171,
+      "w": 32,
+      "h": 32
+    },
+    "crop": "(prototype) the real build saves a cropped screenshot of the element here",
+    "sent": true
+  },
+  {
+    "id": "c2",
+    "status": "open",
+    "createdAt": "2026-11-22T11:17:39.146Z",
+    "text": "Primary action should look destructive.",
+    "story": "short",
+    "viewport": 390,
+    "textScale": 100,
+    "selector": "[data-slot=\"action\"]:nth(2)",
+    "role": "button",
+    "name": "Delete project",
+    "box": {
+      "x": 185,
+      "y": 305,
+      "w": 140,
+      "h": 44
+    },
+    "crop": "(prototype) the real build saves a cropped screenshot of the element here",
+    "sent": false
+  },
+  {
+    "id": "c3",
+    "status": "resolved",
+    "createdAt": "2026-11-22T11:17:39.988Z",
+    "kind": "accepted-exception",
+    "text": "close target is 16x16px, below the 24px floor",
+    "story": "short",
+    "selector": "[data-slot=\"close\"]"
+  }
+]
