@@ -36,7 +36,7 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/state') return json(res, 200, { comments: read('comments.json', []), viewports: read('viewports.json', []) });
     if (req.method === 'POST' && u.pathname === '/api/comments') {
       const list = read('comments.json', []);
-      const c = { id: 'c' + (list.length + 1), status: 'open', createdAt: new Date().toISOString(), ...data };
+      const c = { id: 'c' + (Math.max(0, ...list.map((x) => Number(x.id.slice(1)))) + 1), status: 'open', createdAt: new Date().toISOString(), ...data };
       list.push(c); write('comments.json', list); return json(res, 200, c);
     }
     const m = u.pathname.match(/^\/api\/comments\/(c\d+)$/);
@@ -45,6 +45,15 @@ const server = http.createServer((req, res) => {
       const c = list.find((x) => x.id === m[1]);
       if (!c) return json(res, 404, { error: 'not found' });
       Object.assign(c, data); write('comments.json', list); return json(res, 200, c);
+    }
+    if (req.method === 'DELETE' && m) {
+      write('comments.json', read('comments.json', []).filter((x) => x.id !== m[1]));
+      return json(res, 200, { ok: true });
+    }
+    const v = u.pathname.match(/^\/api\/viewports\/(\d+)$/);
+    if (req.method === 'DELETE' && v) {
+      const list = read('viewports.json', []).filter((w) => w !== Number(v[1]));
+      write('viewports.json', list); return json(res, 200, list);
     }
     if (req.method === 'POST' && u.pathname === '/api/viewports') {
       const list = read('viewports.json', []);

@@ -5,61 +5,109 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>reax preview (PROTOTYPE)</title>
 <style>
-  /* PROTOTYPE, throwaway. Interaction sketch of the reax live preview (ticket #13/#14). */
+  /* PROTOTYPE, throwaway. Interaction sketch of the reax live preview (ticket #13/#14), polished after critique. */
   :root {
+    /* tokens of the component under test */
     --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
     --radius-sm:4px; --radius-md:8px; --radius-lg:12px; --radius-full:999px;
     --text-sm:.875em; --text-base:1em; --text-lg:1.25em; --text-xl:1.5em;
     --size-16:16px; --size-20:20px; --size-24:24px; --size-32:32px; --size-44:44px;
     --color-surface:#ffffff; --color-text:#15171c; --color-muted:#454c58; --color-primary:#1f4f9a;
     --color-danger:#b3261e; --color-border:#9aa2b1; --color-subtle:#d9dde4; --color-warn:#8a5a00;
-    --ui-bg:#f2f4f7; --ui-panel:#ffffff; --ui-text:#15171c; --ui-muted:#566070; --ui-line:#d4d9e1;
-    --accent:#6b3fd4; --ok:#1b7a43; --bad:#a3262b; --warnc:#8a5a00;
+    /* chrome of the tool: neutral, with one accent kept for the active mode and the selected element */
+    --ui-bg:#eef0f3; --ui-panel:#ffffff; --ui-ink:#1c2026; --ui-muted:#566070; --ui-line:#d3d8e0; --ui-wash:#f5f6f8;
+    --accent:#5b3fd0; --accent-wash:rgba(91,63,208,.12);
+    --ok:#1b7a43; --ok-wash:#e4f4ea; --bad:#a3262b; --bad-wash:#fbe5e6; --warn:#8a5a00; --warn-wash:#fdf1d6; --info:#1f4f9a; --info-wash:#e6eefb;
+    color-scheme: light;
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--ui-bg); color:var(--ui-text); font:14px/1.45 system-ui,-apple-system,sans-serif; }
-  .bar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:10px 16px; background:var(--ui-panel); border-bottom:1px solid var(--ui-line); position:sticky; top:0; z-index:5; }
-  .pill { font-size:11px; font-weight:700; letter-spacing:.04em; background:#fdf1d6; color:var(--warnc); padding:2px 8px; border-radius:999px; }
-  .seg { display:inline-flex; border:1px solid var(--ui-line); border-radius:8px; overflow:hidden; }
-  .seg button { border:0; background:transparent; padding:6px 12px; font:inherit; cursor:pointer; color:var(--ui-text); }
+  [hidden] { display: none !important; }
+  html { scrollbar-color: #b7bdc8 transparent; }
+  body { margin:0; background:var(--ui-bg); color:var(--ui-ink); font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  ::selection { background:var(--accent-wash); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  /* header: mode switch always visible; viewport controls collapse on phones */
+  .bar { background:var(--ui-panel); border-bottom:1px solid var(--ui-line); position:sticky; top:0; z-index:20; padding:8px 16px; }
+  .bar-row { display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; }
+  h1 { font-size:15px; margin:0; }
+  .pill { font-size:11px; font-weight:700; letter-spacing:.04em; background:var(--warn-wash); color:var(--warn); padding:2px 8px; border-radius:999px; }
+  .seg { display:inline-flex; border:1px solid var(--ui-line); border-radius:8px; overflow:hidden; background:#fff; }
+  .seg button { border:0; background:transparent; padding:7px 12px; font:inherit; cursor:pointer; color:var(--ui-ink); min-height:32px; }
+  .seg button + button { border-left:1px solid var(--ui-line); }
   .seg button[aria-pressed="true"] { background:var(--accent); color:#fff; }
-  button.plain { border:1px solid var(--ui-line); background:#fff; border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer; }
-  button.primary { border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  select, input[type=text], textarea { font:inherit; padding:5px 8px; border:1px solid var(--ui-line); border-radius:6px; background:#fff; color:var(--ui-text); }
+  #controls summary { cursor:pointer; padding:6px 0; color:var(--ui-muted); }
+  .controls { display:flex; flex-wrap:wrap; gap:10px 22px; padding:6px 0 4px; align-items:center; }
+  .cluster { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; }
+  .readout { color:var(--ui-muted); font-variant-numeric:tabular-nums; min-width:84px; }
+  .chk { display:inline-flex; gap:6px; align-items:center; }
+  @media (min-width:900px) { #controls summary { display:none; } }
+
+  .b { border:1px solid var(--ui-line); background:#fff; color:var(--ui-ink); border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer; min-height:32px; }
+  .b:hover { background:var(--ui-wash); }
+  .b.pri { background:var(--ui-ink); border-color:var(--ui-ink); color:#fff; }
+  .b.pri:hover { background:#000; }
+  .b.sm { padding:3px 10px; min-height:28px; font-size:13px; }
+  .b:disabled { opacity:.45; cursor:not-allowed; }
+  select, input[type=text], input[type=number], textarea { font:inherit; padding:5px 8px; border:1px solid var(--ui-line); border-radius:6px; background:#fff; color:var(--ui-ink); min-height:32px; }
+  input[type=number] { width:76px; }
   textarea { width:100%; min-height:64px; }
-  .row select, .row input[type=text] { width:100%; min-width:0; }
-  .layout { display:grid; grid-template-columns: 1fr 340px; min-height:calc(100vh - 52px); }
-  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-  .stage-wrap { padding:24px; overflow:auto; }
-  .frame-wrap { position:relative; width:max-content; margin:0 auto 0 0; padding-right:16px; }
-  #frame { position:relative; width:390px; height:520px; background:#8b909a; overflow:hidden; border:1px solid #5f6672; border-radius:6px; }
+
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; min-height:calc(100vh - 56px); }
+  .stage-wrap { padding:16px 24px 24px; min-width:0; }
+  .banner { display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--info-wash); color:var(--info); border-radius:8px; padding:6px 12px; margin-bottom:12px; font-size:13px; }
+  .stage-top { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; min-height:34px; margin-bottom:8px; }
+  .chip { background:var(--ui-ink); color:#fff; font-size:12px; padding:3px 10px; border-radius:999px; }
+  .note { color:var(--ui-muted); font-size:13px; margin:0; text-wrap:pretty; }
+  .draftpill { background:var(--warn-wash); color:var(--warn); font-size:13px; padding:3px 10px; border-radius:999px; font-weight:600; }
+
+  .frame-wrap { position:relative; width:max-content; padding-right:16px; }
+  #scaler { position:relative; }
+  #frame { position:absolute; left:0; top:0; height:520px; background:#8b909a; overflow:hidden; border:1px solid #5f6672; border-radius:6px; transform-origin:0 0; }
   #frame.t200 #stage { font-size:200%; }
+  #frame.parts [data-slot] { outline:1.5px dashed var(--ui-ink); outline-offset:1px; }
   #stage { font-size:16px; position:absolute; inset:0; display:grid; place-items:center; padding:12px; font-family:system-ui,sans-serif; color:var(--color-text); }
-  #handle { position:absolute; top:0; right:0; width:16px; height:100%; cursor:ew-resize; display:grid; place-items:center; touch-action:none; }
-  #handle::after { content:""; width:4px; height:48px; border-radius:2px; background:var(--accent); }
-  #pins { position:absolute; inset:0; pointer-events:none; }
-  .pin { position:absolute; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); box-shadow:0 1px 4px rgba(0,0,0,.4); }
-  .pin.resolved { background:var(--ok); }
-  #hl { position:absolute; pointer-events:none; border:2px solid var(--accent); background:rgba(107,63,212,.12); display:none; z-index:3; }
-  .readout { color:var(--ui-muted); font-variant-numeric:tabular-nums; }
-  aside { background:var(--ui-panel); border-left:1px solid var(--ui-line); padding:16px; overflow:auto; }
-  aside h3 { margin:16px 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--ui-muted); }
-  aside h3:first-child { margin-top:0; }
-  .row { display:grid; grid-template-columns:110px 1fr; gap:8px; align-items:center; margin:6px 0; }
+  #handle { position:absolute; top:0; right:0; width:16px; height:100%; cursor:ew-resize; display:grid; place-items:center; touch-action:none; border-radius:4px; }
+  #handle::after { content:""; width:4px; height:48px; border-radius:2px; background:var(--ui-muted); }
+  #handle:hover::after, #handle:focus-visible::after { background:var(--accent); }
+  #overlay { position:absolute; inset:0; pointer-events:none; }
+  #hl { position:absolute; display:none; border:2px dashed var(--accent); background:var(--accent-wash); z-index:3; }
+  #sel { position:absolute; display:none; border:2px solid var(--accent); z-index:4; }
+  .badge { position:absolute; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); z-index:5; font-variant-numeric:tabular-nums; }
+  .pin { position:absolute; min-width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; display:grid; place-items:center; transform:translate(-50%,-50%); box-shadow:0 1px 4px rgba(0,0,0,.35); z-index:6; border:2px solid #fff; }
+  .pin.addressed { background:var(--warn); }
+  .pin.resolved { background:#fff; color:var(--ok); border-color:var(--ok); }
+  .pin.hot { outline:3px solid var(--accent); outline-offset:2px; }
+
+  /* review rail: right column on desktop, bottom sheet on phones */
+  #rail { background:var(--ui-panel); border-left:1px solid var(--ui-line); min-width:0; display:flex; flex-direction:column; }
+  #panel { padding:16px; overflow:auto; flex:1; }
+  .sheet-bar { display:none; }
+  #panel h3 { margin:18px 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--ui-muted); }
+  #panel h3:first-child { margin-top:0; }
+  .row { display:grid; grid-template-columns:84px minmax(0,1fr); gap:8px; align-items:center; margin:6px 0; }
+  .row select, .row input[type=text] { width:100%; min-width:0; }
+  .card { border:1px solid var(--ui-line); border-radius:8px; padding:8px 10px; margin:8px 0; background:var(--ui-wash); }
+  .comment { border:1px solid var(--ui-line); border-radius:8px; padding:8px 10px; margin:8px 0; }
+  .comment:hover { border-color:var(--accent); }
+  .card-h { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--ui-line); vertical-align:top; }
-  code { font:12px ui-monospace,monospace; background:#eef0f4; padding:1px 4px; border-radius:4px; word-break:break-all; }
-  .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:999px; background:#eef0f4; }
-  .tag.open { background:#e6eefb; color:#1f4f9a; } .tag.addressed { background:#fdf1d6; color:var(--warnc); } .tag.resolved { background:#e4f4ea; color:var(--ok); }
-  .warn { background:#fbe5e6; color:var(--bad); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
-  .good { background:#e4f4ea; color:var(--ok); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
-  .note { color:var(--ui-muted); font-size:13px; }
-  .comment { border:1px solid var(--ui-line); border-radius:8px; padding:8px 10px; margin:8px 0; }
-  .parts [data-slot] { outline:1.5px dashed var(--accent); outline-offset:1px; position:relative; }
-  .parts [data-slot]::after { content:attr(data-slot); position:absolute; top:-10px; left:4px; font:10px/1.4 ui-monospace,monospace; background:var(--accent); color:#fff; padding:0 4px; border-radius:3px; pointer-events:none; z-index:2; }
+  td code { white-space:nowrap; }
+  code { font:12px ui-monospace,monospace; background:#eceef2; padding:1px 4px; border-radius:4px; overflow-wrap:anywhere; }
+  .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:999px; background:#eceef2; font-weight:600; }
+  .tag.open { background:var(--info-wash); color:var(--info); } .tag.addressed { background:var(--warn-wash); color:var(--warn); } .tag.resolved { background:var(--ok-wash); color:var(--ok); }
+  .alert { background:var(--bad-wash); color:var(--bad); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .caution { background:var(--warn-wash); color:var(--warn); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .good { background:var(--ok-wash); color:var(--ok); border-radius:8px; padding:6px 10px; margin:6px 0; font-size:13px; }
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--ui-line); margin:8px 0; }
+  .tabs button { border:0; background:transparent; padding:6px 10px; font:inherit; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; color:var(--ui-muted); }
+  .tabs button[aria-selected="true"] { border-bottom-color:var(--accent); color:var(--ui-ink); font-weight:600; }
+  details.more { margin:8px 0; } details.more summary { cursor:pointer; color:var(--ui-muted); }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
 
-  /* The component under test: Dialog / Confirm. Uses tokens, em-based type so 200% text scales. */
+  /* the component under test: Dialog / Confirm */
   .dialog { background:var(--color-surface); color:var(--color-text); border-radius:var(--radius-lg); padding:var(--space-5); width:100%; max-width:520px; box-shadow:0 12px 40px rgba(0,0,0,.3); }
   .dialog-head { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-3); }
   .dialog-title { margin:0; font-size:var(--text-lg); line-height:1.25; }
@@ -69,54 +117,90 @@
   .dialog .btn { min-width:140px; min-height:var(--size-44); padding:0 var(--space-4); border-radius:var(--radius-md); border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text); font:inherit; cursor:pointer; }
   .dialog .btn.primary { background:var(--color-primary); border-color:var(--color-primary); color:#fff; }
   .dialog .btn.danger { background:var(--color-danger); border-color:var(--color-danger); color:#fff; }
+  .dialog :focus-visible { outline:2px solid var(--color-primary); outline-offset:2px; }
+
+  @media (max-width:899px) {
+    .bar { padding:6px 12px; }
+    .layout { grid-template-columns:minmax(0,1fr); }
+    .stage-wrap { padding:12px 12px 84px; }
+    #rail { position:fixed; left:0; right:0; bottom:0; max-height:56vh; z-index:30; border-left:0; border-top:1px solid var(--ui-line); box-shadow:0 -8px 24px rgba(0,0,0,.14); transform:translateY(calc(100% - 52px)); transition:transform .22s cubic-bezier(.16,1,.3,1); }
+    #rail.open { transform:none; }
+    .sheet-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:52px; padding:0 16px; border:0; background:var(--ui-panel); font:inherit; font-weight:600; color:var(--ui-ink); cursor:pointer; text-align:left; }
+    .chev { width:10px; height:10px; border-right:2px solid var(--ui-muted); border-bottom:2px solid var(--ui-muted); transform:rotate(-135deg); transition:transform .2s; }
+    #rail.open .chev { transform:rotate(45deg); }
+  }
+  @media (prefers-reduced-motion:reduce) { #rail, .chev { transition:none; } }
 </style>
 </head>
 <body>
 <header class="bar">
-  <strong>reax preview</strong><span class="pill">PROTOTYPE</span>
-  <div class="seg" id="modes" role="group" aria-label="Mode">
-    <button type="button" data-mode="test" aria-pressed="true">Test</button>
-    <button type="button" data-mode="comment" aria-pressed="false">Comment</button>
-    <button type="button" data-mode="anatomy" aria-pressed="false">Anatomy</button>
-    <button type="button" data-mode="edit" aria-pressed="false">Edit</button>
-  </div>
-  <label>Story <select id="story"><option value="short">Dialog/Confirm</option><option value="long">Dialog/Confirm (long text)</option></select></label>
-  <div class="seg" id="presets" role="group" aria-label="Width presets">
-    <button type="button" data-w="320" aria-pressed="false">320</button>
-    <button type="button" data-w="390" aria-pressed="true">390</button>
-    <button type="button" data-w="1280" aria-pressed="false">1280</button>
-  </div>
-  <label><input type="checkbox" id="t200"> 200% text</label>
-  <span class="readout" id="readout"></span>
-  <button class="plain" id="sweep" type="button">Find narrowest working width</button>
-</header>
-<div class="layout">
-  <section class="stage-wrap">
-    <div class="frame-wrap">
-      <div id="frame">
-        <div id="stage"></div>
-      </div>
-      <div id="handle" role="separator" aria-orientation="vertical" aria-label="Resize preview width"></div>
-      <div id="pins"></div>
-      <div id="hl"></div>
+  <div class="bar-row">
+    <h1>reax preview</h1><span class="pill">PROTOTYPE</span>
+    <div class="seg" id="modes" role="group" aria-label="Mode">
+      <button type="button" data-mode="test" aria-pressed="true" aria-keyshortcuts="1" title="Test (1)">Test</button>
+      <button type="button" data-mode="comment" aria-pressed="false" aria-keyshortcuts="2" title="Comment (2)">Comment</button>
+      <button type="button" data-mode="anatomy" aria-pressed="false" aria-keyshortcuts="3" title="Anatomy (3)">Anatomy</button>
+      <button type="button" data-mode="edit" aria-pressed="false" aria-keyshortcuts="4" title="Edit (4)">Edit</button>
     </div>
-    <p class="note">Drag the purple handle to resize the frame. Test mode lets you use the component; the other modes select elements instead.</p>
+  </div>
+  <details id="controls" open>
+    <summary>Width, text size and story</summary>
+    <div class="controls">
+      <div class="cluster" role="group" aria-label="Viewport">
+        <div class="seg" id="presets" role="group" aria-label="Width presets">
+          <button type="button" data-w="320" aria-pressed="false">320</button>
+          <button type="button" data-w="390" aria-pressed="true">390</button>
+          <button type="button" data-w="768" aria-pressed="false">768</button>
+          <button type="button" data-w="1280" aria-pressed="false">1280</button>
+        </div>
+        <label>Width <input type="number" id="wInput" min="180" max="1600" step="10" inputmode="numeric"> px</label>
+        <span class="readout" id="readout"></span>
+        <label class="chk"><input type="checkbox" id="t200"> 200% text</label>
+      </div>
+      <div class="cluster">
+        <label>Story <select id="story"><option value="short">Dialog/Confirm</option><option value="long">Dialog/Confirm (long text)</option></select></label>
+        <button class="b" id="sweep" type="button">Find narrowest width</button>
+      </div>
+    </div>
+  </details>
+</header>
+<main class="layout">
+  <section class="stage-wrap" id="stageWrap" aria-label="Preview">
+    <div id="demoBanner" class="banner" hidden>
+      <span>Demo mode: no helper server, so comments and edits live in this tab only. Run <code>node prototypes/preview/server.mjs</code> locally to save them.</span>
+      <button class="b sm" id="dismissDemo" type="button">Dismiss</button>
+    </div>
+    <div class="stage-top"><span class="chip" id="chip"></span><span class="note" id="scaleNote"></span><span id="draftStrip"></span></div>
+    <div class="frame-wrap" id="fw">
+      <div id="scaler"><div id="frame"><div id="stage"></div></div></div>
+      <div id="handle" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Preview width" aria-valuemin="180" aria-valuemax="1600"></div>
+      <div id="overlay" aria-hidden="true"><div id="hl"></div><div id="sel"></div><div id="badges"></div><div id="pins"></div></div>
+    </div>
+    <p class="note" style="margin-top:10px">Drag the handle, or focus it and press the arrow keys (Shift for 50px), to resize. Keys 1 to 4 switch mode, Esc deselects.</p>
   </section>
-  <aside id="panel" aria-live="polite"></aside>
-</div>
+  <aside id="rail" aria-label="Review panel">
+    <button type="button" class="sheet-bar" id="sheetBar" aria-expanded="false" aria-controls="panel"><span id="sheetTitle"></span><span class="chev" aria-hidden="true"></span></button>
+    <div id="panel"></div>
+  </aside>
+</main>
+<div class="sr" id="status" role="status" aria-live="polite"></div>
 
 <script>
 const TOKEN = '__TOKEN__';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
 /* Without the helper server (for example the hosted demo) the same routes run in memory, so everything can still be tried. */
 const mem = { comments: [], viewports: [], edits: [] };
 function memApi(path, method, body) {
   if (path === '/state') return { comments: [...mem.comments], viewports: [...mem.viewports] };
-  if (method === 'POST' && path === '/comments') { const c = { id: 'c' + (mem.comments.length + 1), status: 'open', createdAt: new Date().toISOString(), ...body }; mem.comments.push(c); return c; }
+  if (method === 'POST' && path === '/comments') { const c = { id: 'c' + (mem.comments.length + 1 + (mem.removed || 0)), status: 'open', createdAt: new Date().toISOString(), ...body }; mem.comments.push(c); return c; }
   const m = path.match(/^\/comments\/(c\d+)$/);
   if (method === 'PATCH' && m) { const c = mem.comments.find((x) => x.id === m[1]); Object.assign(c, body); return c; }
+  if (method === 'DELETE' && m) { mem.comments = mem.comments.filter((x) => x.id !== m[1]); mem.removed = (mem.removed || 0) + 1; return { ok: true }; }
+  const v = path.match(/^\/viewports\/(\d+)$/);
+  if (method === 'DELETE' && v) { mem.viewports = mem.viewports.filter((w) => w !== Number(v[1])); return mem.viewports; }
   if (method === 'POST' && path === '/viewports') { if (!mem.viewports.includes(body.width)) mem.viewports.push(body.width); return mem.viewports; }
   if (method === 'POST' && path === '/apply') { const e = { id: 'e' + (mem.edits.length + 1), ...body }; mem.edits.push(e); return e; }
   return {};
@@ -126,7 +210,7 @@ const api = async (path, method = 'GET', body) => {
     const r = await fetch('/api' + path, { method, headers: { 'x-token': TOKEN, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     if (!r.ok) throw new Error(String(r.status));
     return await r.json();
-  } catch { state.offline = true; return memApi(path, method, body); }
+  } catch { state.offline = true; $('#demoBanner').hidden = state.demoDismissed; return memApi(path, method, body); }
 };
 
 const STORIES = {
@@ -140,9 +224,17 @@ const TOKENS = {
   size: { '--size-16': '16px', '--size-20': '20px', '--size-24': '24px', '--size-32': '32px', '--size-44': '44px' },
   color: { '--color-surface': '#ffffff', '--color-text': '#15171c', '--color-muted': '#454c58', '--color-primary': '#1f4f9a', '--color-danger': '#b3261e', '--color-border': '#9aa2b1', '--color-subtle': '#d9dde4', '--color-warn': '#8a5a00' },
 };
-const FLOOR = 24;
-const state = { mode: 'test', view: 'parts', width: 390, t200: false, story: 'short', selected: null, comments: [], viewports: [], draft: [], sweep: null, pending: null };
-const frame = $('#frame'), stage = $('#stage'), panel = $('#panel'), hl = $('#hl'), pins = $('#pins');
+const FLOOR = 24, FRAME_H = 520, MIN_W = 180, MAX_W = 1600;
+const FIELDS = {
+  padding: { key: 'padding', label: 'Padding', group: 'padding' }, borderRadius: { key: 'borderRadius', label: 'Radius', group: 'borderRadius' },
+  fontSize: { key: 'fontSize', label: 'Text size', group: 'fontSize' }, color: { key: 'color', label: 'Text colour', group: 'color' },
+  backgroundColor: { key: 'backgroundColor', label: 'Background', group: 'color' }, height: { key: 'height', label: 'Height', group: 'size' }, width: { key: 'width', label: 'Width', group: 'size' },
+};
+const PRIMARY = ['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor'], MORE = ['height', 'width'];
+const MODE_LABEL = { test: 'Test', comment: 'Comment', anatomy: 'Anatomy', edit: 'Edit' };
+const state = { mode: 'test', view: 'parts', width: 390, scale: 1, t200: false, story: 'short', selected: null, comments: [], viewports: [], draft: [], original: '', draftHTML: '', viewingOriginal: false, sweep: null, receipt: null, offline: false, demoDismissed: false };
+const frame = $('#frame'), stage = $('#stage'), panel = $('#panel'), hl = $('#hl'), sel = $('#sel'), pins = $('#pins'), badges = $('#badges'), rail = $('#rail');
+const announce = (m) => { $('#status').textContent = ''; setTimeout(() => ($('#status').textContent = m), 30); };
 
 function renderStage() {
   const s = STORIES[state.story];
@@ -158,15 +250,16 @@ function renderStage() {
       <button class="btn primary" data-slot="action" type="button">Delete project</button>
     </div>
   </div>`;
-  state.selected = null; state.draft = [];
+  state.original = stage.innerHTML; state.draft = []; state.viewingOriginal = false; state.selected = null; state.sweep = null;
 }
 
-/* ---------- helpers ---------- */
+/* ---------- element helpers ---------- */
 const slotOf = (el) => (el && el.closest ? el.closest('[data-slot]') : null);
 function selectorOf(el) {
   const slot = el.dataset.slot; const same = $$(`[data-slot="${slot}"]`, stage);
   return same.length > 1 ? `[data-slot="${slot}"]:nth(${same.indexOf(el) + 1})` : `[data-slot="${slot}"]`;
 }
+function resolve(sel) { const m = sel.match(/^\[data-slot="(.+?)"\](?::nth\((\d+)\))?$/); return m ? $$(`[data-slot="${m[1]}"]`, stage)[Number(m[2] || 1) - 1] || null : null; }
 const IMPLICIT = { BUTTON: 'button', H2: 'heading', P: 'paragraph', DIV: 'generic' };
 const roleOf = (el) => el.getAttribute('role') || IMPLICIT[el.tagName] || 'generic';
 function nameOf(el) {
@@ -174,177 +267,280 @@ function nameOf(el) {
   const by = el.getAttribute('aria-labelledby'); if (by && document.getElementById(by)) return document.getElementById(by).textContent.trim();
   return el.textContent.trim().replace(/\s+/g, ' ').slice(0, 60);
 }
-const boxOf = (el) => { const f = frame.getBoundingClientRect(), r = el.getBoundingClientRect(); return { x: Math.round(r.left - f.left), y: Math.round(r.top - f.top), w: Math.round(r.width), h: Math.round(r.height) }; };
+/* sizes are in the component's own pixels, so they are divided by the frame's display scale */
+const boxOf = (el) => { const f = frame.getBoundingClientRect(), r = el.getBoundingClientRect(), S = state.scale; return { x: Math.round((r.left - f.left) / S), y: Math.round((r.top - f.top) / S), w: Math.round(r.width / S), h: Math.round(r.height / S) }; };
 const isTarget = (el) => el.tagName === 'BUTTON';
+const sizeOf = (el) => [el.offsetWidth, el.offsetHeight];
 function rgb(c) { const m = c.match(/[\d.]+/g).map(Number); return { r: m[0], g: m[1], b: m[2], a: m[3] === undefined ? 1 : m[3] }; }
 const hex = (c) => '#' + [c.r, c.g, c.b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
 function bgOf(el) { for (let e = el; e && e !== document.body; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.a > 0.99) return c; } return { r: 255, g: 255, b: 255, a: 1 }; }
 function lum(c) { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); }
 const contrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); };
-function tokenFor(group, value) {
-  const t = TOKENS[group]; if (!t) return null;
-  for (const [name, v] of Object.entries(t)) { if (group === 'color' ? v === value : v === value) return name; }
-  return null;
-}
+const tokenFor = (group, value) => { const t = TOKENS[group]; if (!t) return null; for (const [n, v] of Object.entries(t)) if (v === value) return n; return null; };
+const px = (v) => Math.round(parseFloat(v) * 10) / 10 + 'px';
 function fontToken(el) {
   const base = parseFloat(getComputedStyle(el.parentElement).fontSize) || 16; const ratio = parseFloat(getComputedStyle(el).fontSize) / base;
-  for (const [n, v] of Object.entries(TOKENS.fontSize)) if (Math.abs(parseFloat(v) - ratio) < 0.02) return n + ' (' + v + ')';
-  return parseFloat(getComputedStyle(el).fontSize).toFixed(0) + 'px';
+  for (const [n, v] of Object.entries(TOKENS.fontSize)) if (Math.abs(parseFloat(v) - ratio) < 0.02) return `${n} (${v})`;
+  return `${Math.round(parseFloat(getComputedStyle(el).fontSize))}px (no token)`;
+}
+/* what the element has now, in token terms; values with no token say so instead of inventing one */
+function currentToken(el, f) {
+  const cs = getComputedStyle(el);
+  if (f.key === 'fontSize') return fontToken(el);
+  if (f.group === 'color') { const c = rgb(cs[f.key]); if (c.a < 0.05) return 'none (transparent)'; const v = hex(c); const t = tokenFor('color', v); return t ? `${t} (${v})` : `${v} (no token)`; }
+  if (f.key === 'padding') { const s = ['Top', 'Right', 'Bottom', 'Left'].map((k) => px(cs['padding' + k])); if (s.every((x) => x === s[0])) { const t = tokenFor('padding', s[0]); return t ? `${t} (${s[0]})` : `${s[0]} (no token)`; } return (s[0] === s[2] && s[1] === s[3] ? `${s[0]} ${s[1]}` : s.join(' ')) + ' (mixed)'; }
+  if (f.key === 'borderRadius') { const v = px(cs.borderTopLeftRadius); const t = tokenFor('borderRadius', v); return t ? `${t} (${v})` : `${v} (no token)`; }
+  const v = (f.key === 'height' ? el.offsetHeight : el.offsetWidth) + 'px'; const t = tokenFor('size', v); return t ? `${t} (${v})` : `${v} (no token)`;
 }
 const breakpoint = (w) => (w < 360 ? 'xs' : w < 640 ? 'sm' : w < 1024 ? 'md' : 'lg');
+const WIDE = window.matchMedia('(min-width: 900px)');
 
 /* ---------- layout checks (also used by the width sweep) ---------- */
 function checkLayout() {
-  const f = frame.getBoundingClientRect(); const problems = [];
+  const f = frame.getBoundingClientRect(); const problems = []; const tol = 1;
   $$('[data-slot]', stage).forEach((el) => {
     const r = el.getBoundingClientRect();
-    if (r.right > f.right + 0.5 || r.left < f.left - 0.5) problems.push(`${el.dataset.slot} clips the frame by ${Math.round(Math.max(r.right - f.right, f.left - r.left))}px`);
-    if (isTarget(el) && (r.width < FLOOR - 0.5 || r.height < FLOOR - 0.5)) problems.push(`${el.dataset.slot} target is ${Math.round(r.width)}x${Math.round(r.height)}px (floor ${FLOOR}px)`);
+    if (r.right > f.right + tol || r.left < f.left - tol) problems.push(`${el.dataset.slot} clips the frame by ${Math.round(Math.max(r.right - f.right, f.left - r.left) / state.scale)}px`);
+    const [w, h] = sizeOf(el); if (isTarget(el) && (w < FLOOR || h < FLOOR)) problems.push(`${el.dataset.slot} target is ${w}x${h}px (floor ${FLOOR}px)`);
   });
   if (stage.scrollWidth > stage.clientWidth + 1) problems.push('content wider than the frame');
   return problems;
 }
 
-/* ---------- toolbar ---------- */
-function setWidth(w) { state.width = Math.max(180, Math.round(w)); frame.style.width = state.width + 'px'; updateToolbar(); drawPins(); }
+/* ---------- frame size, scale and overlays ---------- */
+function fit() {
+  const wrap = $('#stageWrap'); const cs = getComputedStyle(wrap);
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16;
+  state.scale = Math.max(0.25, Math.min(1, avail / state.width));
+  frame.style.width = state.width + 'px'; frame.style.transform = `scale(${state.scale})`;
+  const sc = $('#scaler'); sc.style.width = Math.round(state.width * state.scale) + 'px'; sc.style.height = Math.round(FRAME_H * state.scale) + 'px';
+}
+function setWidth(w, quiet) {
+  state.width = Math.max(MIN_W, Math.min(MAX_W, Math.round(w))); fit();
+  if (quiet) return;
+  updateToolbar(); drawOverlay(); updateStageTop();
+}
 function updateToolbar() {
-  $('#readout').textContent = `${state.width}px · ${breakpoint(state.width)}`;
+  $('#readout').textContent = `${breakpoint(state.width)} breakpoint`; $('#wInput').value = state.width;
+  const h = $('#handle'); h.setAttribute('aria-valuenow', state.width); h.setAttribute('aria-valuetext', `${state.width} pixels`);
   $$('#presets button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.w) === state.width)));
   $$('#modes button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
 }
+const fwRect = () => $('#fw').getBoundingClientRect();
+function place(box, el) { const f = fwRect(), r = el.getBoundingClientRect(); Object.assign(box.style, { display: 'block', left: r.left - f.left + 'px', top: r.top - f.top + 'px', width: r.width + 'px', height: r.height + 'px' }); }
+function drawOverlay() {
+  if (state.selected && stage.contains(state.selected) && state.mode !== 'test') place(sel, state.selected); else sel.style.display = 'none';
+  const f = fwRect();
+  pins.innerHTML = '';
+  const partsView = state.mode === 'anatomy' && state.view === 'parts'; /* numbered badges take the room pins would use */
+  state.comments.filter((c) => !partsView && c.kind !== 'accepted-exception' && c.story === state.story && !state.viewingOriginal).forEach((c) => { const el = resolve(c.selector); if (!el) return; const r = el.getBoundingClientRect(); const d = document.createElement('div'); d.className = 'pin ' + c.status; d.dataset.id = c.id; d.textContent = c.id.slice(1); d.style.left = Math.max(12, r.right - f.left + 10) + 'px'; d.style.top = Math.max(12, r.top - f.top - 10) + 'px'; pins.appendChild(d); });
+  badges.innerHTML = '';
+  if (state.mode === 'anatomy' && state.view === 'parts') {
+    const placed = [];
+    $$('[data-slot]', stage).forEach((el, i) => {
+      const r = el.getBoundingClientRect(); const cands = [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom], [r.left, (r.top + r.bottom) / 2], [r.right, (r.top + r.bottom) / 2]];
+      let pick = cands[0]; for (const c of cands) { const x = c[0] - f.left, y = c[1] - f.top; if (!placed.some((p) => Math.abs(p.x - x) < 24 && Math.abs(p.y - y) < 24)) { pick = c; break; } }
+      const x = pick[0] - f.left, y = pick[1] - f.top; placed.push({ x, y });
+      const b = document.createElement('div'); b.className = 'badge'; b.textContent = i + 1; b.style.left = x + 'px'; b.style.top = y + 'px'; badges.appendChild(b);
+    });
+  }
+}
+function updateStageTop() {
+  const chips = { test: 'Test: use the component', comment: 'Comment: click an element', anatomy: 'Anatomy: ' + state.view, edit: 'Edit: click an element, changes are a draft' };
+  $('#chip').textContent = chips[state.mode];
+  $('#scaleNote').textContent = state.scale < 0.995 ? `Shown at ${Math.round(state.scale * 100)}% to fit; sizes are real pixels` : '';
+  const n = state.draft.length;
+  $('#draftStrip').innerHTML = n ? `<span class="draftpill">Draft: ${n} change${n > 1 ? 's' : ''} on this frame${state.viewingOriginal ? ' (showing original)' : ''}</span> <button class="b sm" id="toggleOrig" type="button">${state.viewingOriginal ? 'Show draft' : 'Show original'}</button> <button class="b sm" id="discardTop" type="button">Discard</button>` : '';
+  const t = $('#toggleOrig'); if (t) t.onclick = toggleOriginal; const d = $('#discardTop'); if (d) d.onclick = discardDraft;
+}
+function toggleOriginal() {
+  if (!state.viewingOriginal) { state.draftHTML = stage.innerHTML; stage.innerHTML = state.original; state.viewingOriginal = true; } else { stage.innerHTML = state.draftHTML; state.viewingOriginal = false; }
+  state.selected = null; drawOverlay(); updateStageTop(); renderPanel();
+}
+function discardDraft() { const keep = state.selected && selectorOf(state.selected); stage.innerHTML = state.original; state.draft = []; state.viewingOriginal = false; state.selected = keep ? resolve(keep) : null; drawOverlay(); updateStageTop(); renderPanel(); announce('Draft discarded'); }
+
+/* ---------- toolbar and controls ---------- */
+function syncModeClasses() { frame.classList.toggle('parts', state.mode === 'anatomy' && state.view === 'parts'); }
+function setMode(m) { state.mode = m; if (m === 'test') state.selected = null; hl.style.display = 'none'; syncModeClasses(); updateToolbar(); updateStageTop(); drawOverlay(); renderPanel(); announce(MODE_LABEL[m] + ' mode'); }
+$$('#modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 $$('#presets button').forEach((b) => b.addEventListener('click', () => setWidth(Number(b.dataset.w))));
-$('#t200').addEventListener('change', (e) => { state.t200 = e.target.checked; frame.classList.toggle('t200', state.t200); drawPins(); renderPanel(); });
-$('#story').addEventListener('change', (e) => { state.story = e.target.value; renderStage(); drawPins(); renderPanel(); });
-$$('#modes button').forEach((b) => b.addEventListener('click', () => { state.mode = b.dataset.mode; state.selected = null; frame.classList.toggle('parts', state.mode === 'anatomy' && state.view === 'parts'); hl.style.display = 'none'; updateToolbar(); renderPanel(); }));
+$('#wInput').addEventListener('change', (e) => setWidth(Number(e.target.value) || state.width));
+$('#t200').addEventListener('change', (e) => { state.t200 = e.target.checked; frame.classList.toggle('t200', state.t200); drawOverlay(); renderPanel(); });
+$('#story').addEventListener('change', (e) => { state.story = e.target.value; renderStage(); drawOverlay(); updateStageTop(); renderPanel(); });
+$('#dismissDemo').addEventListener('click', () => { state.demoDismissed = true; $('#demoBanner').hidden = true; });
+function syncControls() { if ($('#controls').open !== WIDE.matches && (WIDE.matches || !state.userToggledControls)) $('#controls').open = WIDE.matches; }
+$('#controls').addEventListener('toggle', () => { if (!WIDE.matches) state.userToggledControls = true; });
+window.addEventListener('resize', () => { fit(); updateStageTop(); drawOverlay(); syncControls(); });
 
-/* frame resize handle */
+/* frame resize: pointer and keyboard */
 const handle = $('#handle');
-handle.addEventListener('pointerdown', (e) => { handle.setPointerCapture(e.pointerId); const left = frame.getBoundingClientRect().left; const move = (ev) => setWidth(ev.clientX - left); const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); renderPanel(); }; handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); });
+handle.addEventListener('pointerdown', (e) => { handle.setPointerCapture(e.pointerId); const left = $('#scaler').getBoundingClientRect().left; const move = (ev) => setWidth((ev.clientX - left) / state.scale); const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); renderPanel(); }; handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); });
+handle.addEventListener('keydown', (e) => { const step = e.shiftKey ? 50 : 10; if (e.key === 'ArrowRight' || e.key === 'ArrowUp') setWidth(state.width + step); else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') setWidth(state.width - step); else if (e.key === 'Home') setWidth(MIN_W); else if (e.key === 'End') setWidth(MAX_W); else return; e.preventDefault(); });
 
-/* width sweep: walk down from the current width until the first break */
+/* width sweep: walk down from the current width until the first break. The rule: no clipping and every button at least 24px. */
 $('#sweep').addEventListener('click', () => {
   const start = state.width; let lastOk = null; let firstBreak = null;
-  for (let w = start; w >= 180; w -= 10) { setWidth(w); const p = checkLayout(); if (p.length) { firstBreak = { w, problems: p }; break; } lastOk = w; }
-  state.sweep = { start, lastOk, firstBreak };
-  setWidth(start); state.mode = 'test'; updateToolbar(); renderPanel();
+  for (let w = start; w >= MIN_W; w -= 10) { setWidth(w, true); const p = checkLayout(); if (p.length) { firstBreak = { w, problems: p }; break; } lastOk = w; }
+  state.sweep = { start, lastOk, firstBreak, draft: state.draft.length, original: state.viewingOriginal };
+  setWidth(start); renderPanel();
+  announce(firstBreak ? (lastOk ? `Works down to ${lastOk} pixels, breaks at ${firstBreak.w}` : `Breaks already at ${start} pixels`) : 'No break found');
 });
 
 /* ---------- picking ---------- */
-stage.addEventListener('mousemove', (e) => { if (state.mode === 'test') return; const el = slotOf(e.target); if (!el || !stage.contains(el)) { hl.style.display = 'none'; return; } const f = $('.frame-wrap').getBoundingClientRect(), r = el.getBoundingClientRect(); Object.assign(hl.style, { display: 'block', left: r.left - f.left + 'px', top: r.top - f.top + 'px', width: r.width + 'px', height: r.height + 'px' }); });
+function pickable(e) { const el = slotOf(e.target); return el && stage.contains(el) ? el : null; }
+stage.addEventListener('mousemove', (e) => { if (state.mode === 'test') return; const el = pickable(e); if (!el) { hl.style.display = 'none'; return; } place(hl, el); });
 stage.addEventListener('mouseleave', () => (hl.style.display = 'none'));
-stage.addEventListener('click', (e) => { if (state.mode === 'test') return; e.preventDefault(); e.stopPropagation(); const el = slotOf(e.target); if (!el || !stage.contains(el)) return; state.selected = el; state.pending = null; renderPanel(); }, true);
+stage.addEventListener('click', (e) => {
+  if (state.mode === 'test') return; e.preventDefault(); e.stopPropagation();
+  const el = pickable(e); if (!el) return;
+  if (state.mode === 'edit' && state.viewingOriginal) { announce('Showing the original. Switch back to the draft to edit.'); return; }
+  select(el);
+}, true);
+function select(el) { state.selected = el; drawOverlay(); renderPanel(); openSheet(true); announce(`Selected ${el.dataset.slot}, ${roleOf(el)}`); }
+function deselect() { state.selected = null; hl.style.display = 'none'; drawOverlay(); renderPanel(); }
+function openSheet(open) { rail.classList.toggle('open', open); $('#sheetBar').setAttribute('aria-expanded', String(open)); }
+$('#sheetBar').addEventListener('click', () => openSheet(!rail.classList.contains('open')));
+document.addEventListener('keydown', (e) => {
+  const t = e.target; if (t.matches && t.matches('input,textarea,select')) { if (e.key === 'Escape') t.blur(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape') { if (state.selected) deselect(); else openSheet(false); return; }
+  const m = { 1: 'test', 2: 'comment', 3: 'anatomy', 4: 'edit' }[e.key]; if (m) setMode(m);
+});
 
 /* ---------- comments ---------- */
-async function loadState() { const s = await api('/state'); state.comments = s.comments; state.viewports = s.viewports; drawPins(); renderPanel(); }
-function resolve(sel) {
-  const m = sel.match(/^\[data-slot="(.+?)"\](?::nth\((\d+)\))?$/);
-  return m ? $$(`[data-slot="${m[1]}"]`, stage)[Number(m[2] || 1) - 1] || null : null;
-}
-function drawPins() {
-  const wrap = $('.frame-wrap').getBoundingClientRect(); pins.innerHTML = '';
-  state.comments.filter((c) => c.kind !== 'accepted-exception' && c.story === state.story).forEach((c) => { const el = resolve(c.selector); if (!el) return; const r = el.getBoundingClientRect(); const d = document.createElement('div'); d.className = 'pin ' + c.status; d.textContent = c.id.slice(1); d.style.left = r.right - wrap.left + 'px'; d.style.top = r.top - wrap.top + 'px'; pins.appendChild(d); });
-}
+async function loadState() { const s = await api('/state'); state.comments = s.comments; state.viewports = s.viewports; drawOverlay(); renderPanel(); }
 async function saveComment(text, send) {
   const el = state.selected; const c = await api('/comments', 'POST', { text, story: state.story, viewport: state.width, textScale: state.t200 ? 200 : 100, selector: selectorOf(el), role: roleOf(el), name: nameOf(el), box: boxOf(el), crop: '(prototype) the real build saves a cropped screenshot of the element here', sent: !!send });
-  state.comments.push(c); state.selected = null; drawPins(); renderPanel();
+  state.comments.push(c); deselect(); announce(send ? 'Comment saved and sent to Claude' : 'Comment saved');
 }
-async function patchComment(id, patch) { const c = await api('/comments/' + id, 'PATCH', patch); state.comments = state.comments.map((x) => (x.id === id ? c : x)); drawPins(); renderPanel(); }
+async function patchComment(id, patch) { const c = await api('/comments/' + id, 'PATCH', patch); state.comments = state.comments.map((x) => (x.id === id ? c : x)); drawOverlay(); renderPanel(); }
+async function removeComment(id) { await api('/comments/' + id, 'DELETE'); state.comments = state.comments.filter((x) => x.id !== id); drawOverlay(); renderPanel(); announce('Comment removed'); }
 
 /* ---------- edit mode ---------- */
-const FIELDS = [
-  { key: 'padding', label: 'Padding', group: 'padding' }, { key: 'borderRadius', label: 'Radius', group: 'borderRadius' },
-  { key: 'fontSize', label: 'Text size', group: 'fontSize' }, { key: 'color', label: 'Text colour', group: 'color' },
-  { key: 'backgroundColor', label: 'Background', group: 'color' }, { key: 'height', label: 'Height', group: 'size' }, { key: 'width', label: 'Width', group: 'size' },
-];
-function currentToken(el, f) {
-  const cs = getComputedStyle(el);
-  if (f.key === 'fontSize') return fontToken(el);
-  const v = f.group === 'color' ? hex(rgb(cs[f.key])) : cs[f.key === 'padding' ? 'paddingTop' : f.key];
-  const t = tokenFor(f.group, v); return t ? `${t} (${v})` : v;
-}
 function applyEdit(el, f, tokenName) {
-  const before = currentToken(el, f); const sel = selectorOf(el);
-  const prop = f.key; el.style[prop] = tokenName ? `var(${tokenName})` : '';
+  const before = currentToken(el, f); const sel2 = selectorOf(el);
+  el.style[f.key] = tokenName ? `var(${tokenName})` : '';
   if (f.key === 'height') el.style.minHeight = '0'; if (f.key === 'width') el.style.minWidth = '0';
-  state.draft = state.draft.filter((d) => !(d.selector === sel && d.property === f.key));
-  if (tokenName) state.draft.push({ selector: sel, property: f.key, from: before, to: tokenName });
-  renderPanel();
+  state.draft = state.draft.filter((d) => !(d.selector === sel2 && d.property === f.key));
+  if (tokenName) state.draft.push({ selector: sel2, property: f.key, from: before, to: tokenName });
+  afterDraftChange();
 }
+function afterDraftChange() { drawOverlay(); updateStageTop(); refreshDraft(); }
 function editWarnings() {
   const w = [];
   $$('[data-slot]', stage).forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (isTarget(el) && (r.width < FLOOR - 0.5 || r.height < FLOOR - 0.5)) w.push({ selector: selectorOf(el), text: `${el.dataset.slot} target is ${Math.round(r.width)}x${Math.round(r.height)}px, below the ${FLOOR}px floor` });
-    if (['title', 'body', 'action'].includes(el.dataset.slot) && el.textContent.trim()) { const fg = rgb(getComputedStyle(el).color), bg = bgOf(el); const cr = contrast(fg, bg); if (cr < 4.5) w.push({ selector: selectorOf(el), text: `${el.dataset.slot} text contrast is ${cr.toFixed(1)}:1, below 4.5:1` }); }
+    const [bw, bh] = sizeOf(el);
+    if (isTarget(el) && (bw < FLOOR || bh < FLOOR)) w.push({ selector: selectorOf(el), text: `${el.dataset.slot} target is ${bw}x${bh}px, below the ${FLOOR}px floor` });
+    if (['title', 'body', 'action'].includes(el.dataset.slot) && el.textContent.trim()) { const cr = contrast(rgb(getComputedStyle(el).color), bgOf(el)); if (cr < 4.5) w.push({ selector: selectorOf(el), text: `${el.dataset.slot} text contrast is ${cr.toFixed(1)}:1, below 4.5:1` }); }
   });
   return w;
 }
 
-/* ---------- panel ---------- */
+/* ---------- rail ---------- */
+function sheetTitle() {
+  const n = state.comments.filter((c) => c.kind !== 'accepted-exception').length;
+  const s = state.selected ? state.selected.dataset.slot : null;
+  if (state.mode === 'test') return `Test · ${n} comment${n === 1 ? '' : 's'}`;
+  return `${MODE_LABEL[state.mode]} · ${s ? 'selected ' + s : 'nothing selected'}`;
+}
 function renderPanel() {
-  let h = state.offline ? '<p class="note">Demo mode: no helper server is running, so comments and edits live in this tab only. Run <code>node prototypes/preview/server.mjs</code> locally to save them to <code>visual-report/</code>.</p>' : '';
-  if (state.sweep) { const s = state.sweep; h += `<h3>Responsive sweep</h3>` + (s.firstBreak ? `<div class="warn">Works down to <strong>${s.lastOk ?? 'n/a'}px</strong>. Breaks at ${s.firstBreak.w}px: ${esc(s.firstBreak.problems.join('; '))}.</div>` : `<div class="good">No break found from ${s.start}px down to 180px.</div>`) + (s.lastOk ? `<button class="plain" id="pin">Pin ${s.lastOk}px as an automated capture</button>` : ''); }
-  if (state.viewports.length) h += `<p class="note">Pinned widths: ${state.viewports.map((w) => `<code>${w}px</code>`).join(' ')}</p>`;
-  if (state.mode === 'test') h += `<h3>Test</h3><p class="note">Use the component as a user would: Tab through it, press the buttons, change the story, resize the frame, switch to 200% text. Nothing is selected in this mode.</p>` + commentList();
+  let h = '';
+  if (state.mode === 'test') h += `<h3>Test</h3><p class="note">Use the component as a user would: Tab through it, press the buttons, change the story, resize the frame, switch to 200% text.</p>`;
   if (state.mode === 'comment') h += commentPanel();
   if (state.mode === 'anatomy') h += anatomyPanel();
   if (state.mode === 'edit') h += editPanel();
-  panel.innerHTML = h; bindPanel();
+  h += sweepPanel() + viewportsPanel() + (state.mode === 'comment' ? '' : '') + commentList();
+  panel.innerHTML = h; bindPanel(); bindDraft(); $('#sheetTitle').textContent = sheetTitle();
+}
+function selectedCard() {
+  const el = state.selected; if (!el) return '';
+  const b = boxOf(el);
+  return `<div class="card"><div class="card-h"><strong>${esc(el.dataset.slot)}</strong><span class="note">${esc(roleOf(el))} “${esc(nameOf(el))}”</span></div><div class="note">${b.w}×${b.h}px at ${state.width}px wide, ${state.t200 ? 200 : 100}% text · <code>${esc(selectorOf(el))}</code></div><div class="actions"><button class="b sm" id="desel" type="button">Deselect (Esc)</button></div></div>`;
+}
+function sweepPanel() {
+  const s = state.sweep; if (!s) return '';
+  const base = s.draft && !s.original ? `<div class="caution">Ran on the draft (${s.draft} change${s.draft > 1 ? 's' : ''}), not the original component.</div>` : '';
+  const body = s.firstBreak
+    ? (s.lastOk ? `<div class="alert">Works down to <strong>${s.lastOk}px</strong>. Breaks at ${s.firstBreak.w}px: ${esc(s.firstBreak.problems.join('; '))}.</div>` : `<div class="alert">Already breaks at ${s.start}px: ${esc(s.firstBreak.problems.join('; '))}.</div>`)
+    : `<div class="good">No break found from ${s.start}px down to ${MIN_W}px.</div>`;
+  return `<h3>Narrowest width</h3>${base}${body}<p class="note">Rule: no clipping, and every button at least ${FLOOR}px.</p><div class="actions">${s.lastOk ? `<button class="b sm" id="pin" type="button">Pin ${s.lastOk}px as an automated capture</button>` : ''}<button class="b sm" id="dismissSweep" type="button">Dismiss</button></div>`;
+}
+function viewportsPanel() {
+  if (!state.viewports.length) return '';
+  return `<h3>Pinned widths</h3><div class="actions">${state.viewports.map((w) => `<span class="tag">${w}px <button class="b sm" data-unpin="${w}" type="button" aria-label="Unpin ${w} pixels">Unpin</button></span>`).join('')}</div>`;
 }
 function commentList() {
   const list = state.comments.filter((c) => c.kind !== 'accepted-exception'); const ex = state.comments.filter((c) => c.kind === 'accepted-exception');
   let h = `<h3>Comments (${list.length})</h3>`;
-  h += list.map((c) => `<div class="comment"><div><span class="tag ${c.status}">${c.status}</span> <strong>#${c.id.slice(1)}</strong> <code>${esc(c.selector)}</code></div><div>${esc(c.text)}</div><div class="note">${esc(c.role)} “${esc(c.name)}” · ${c.viewport}px · ${c.textScale}% text${c.sent ? ' · sent to Claude' : ''}</div><div><button class="plain" data-act="addressed" data-id="${c.id}">Simulate: Claude addressed it</button> <button class="plain" data-act="resolved" data-id="${c.id}">Mark resolved (you)</button></div></div>`).join('') || '<p class="note">No comments yet.</p>';
+  h += list.map((c) => `<div class="comment" data-id="${c.id}"><div><span class="tag ${c.status}">${c.status}</span> <strong>#${c.id.slice(1)}</strong> <code>${esc(c.selector)}</code></div><div>${esc(c.text)}</div><div class="note">${esc(c.role)} “${esc(c.name)}” · ${c.viewport}px · ${c.textScale}% text${c.sent ? ' · sent to Claude' : ''}</div><div class="actions"><button class="b sm" data-act="addressed" data-id="${c.id}" type="button">Mark addressed (demo)</button><button class="b sm" data-act="resolved" data-id="${c.id}" type="button">Resolve</button>${c.status === 'open' && !c.sent ? `<button class="b sm" data-remove="${c.id}" type="button">Remove</button>` : ''}</div></div>`).join('') || '<p class="note">No comments yet.</p>';
+  if (list.length) h += '<p class="note">Pins on the frame: filled is open or addressed, a ring is resolved. Only you resolve a comment.</p>';
   if (ex.length) h += `<h3>Accepted exceptions</h3>` + ex.map((c) => `<div class="comment"><span class="tag resolved">known</span> ${esc(c.text)}</div>`).join('');
   return h;
 }
 function commentPanel() {
-  const el = state.selected;
-  let h = `<h3>Comment</h3>`;
-  if (!el) h += `<p class="note">Hover an element and click it to attach a comment.</p>`;
-  else h += `<div class="row"><span>Element</span><code>${esc(selectorOf(el))}</code></div><div class="row"><span>Role</span><span>${esc(roleOf(el))}</span></div><div class="row"><span>Name</span><span>${esc(nameOf(el))}</span></div><div class="row"><span>Size</span><span>${boxOf(el).w}×${boxOf(el).h}px at ${state.width}px wide, ${state.t200 ? 200 : 100}% text</span></div><textarea id="ctext" aria-label="Comment text" placeholder="What should change here?"></textarea><p><button class="plain" id="csave">Save comment</button> <button class="primary" id="csend">Save and send to Claude</button></p>`;
-  return h + commentList();
+  const el = state.selected; let h = `<h3>Comment</h3>`;
+  if (!el) return h + `<p class="note">Click an element in the frame to attach a comment.</p>`;
+  return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div>`;
 }
 function anatomyPanel() {
-  const tabs = ['parts', 'props', 'tokens', 'accessibility']; let h = `<h3>Anatomy</h3><div class="seg" id="views">${tabs.map((t) => `<button type="button" data-view="${t}" aria-pressed="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
-  if (state.view === 'parts') h += `<p class="note">Slots outlined in the frame. Names come from the Dialog card.</p><table><tr><th>slot</th><th>element</th><th>role</th></tr>${$$('[data-slot]', stage).map((e) => `<tr><td><code>${e.dataset.slot}</code></td><td>${e.tagName.toLowerCase()}</td><td>${roleOf(e)}</td></tr>`).join('')}</table>`;
-  if (state.view === 'props') { const s = state.story; const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent.slice(0, 40) + '…')], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${s}. Types and JSDoc come from the component source.</p><table><tr><th>prop</th><th>type</th><th>value</th></tr>${rows.map((r) => `<tr><td><code>${r[0]}</code></td><td>${esc(r[1])}</td><td><code>${esc(r[2])}</code></td></tr>`).join('')}</table>`; }
-  if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += `<p class="note">Tokens used by <code>${esc(selectorOf(el))}</code>${state.selected ? '' : ' (click an element to inspect another)'}.</p><table><tr><th>property</th><th>token</th></tr>${FIELDS.filter((f) => f.key !== 'width').map((f) => `<tr><td>${f.label}</td><td><code>${esc(currentToken(el, f))}</code></td></tr>`).join('')}</table>`; }
-  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<table><tr><th>slot</th><th>role</th><th>name</th><th>size</th></tr>${$$('[data-slot]', stage).map((e) => { const b = boxOf(e); const bad = isTarget(e) && (b.w < FLOOR || b.h < FLOOR); return `<tr><td><code>${e.dataset.slot}</code></td><td>${roleOf(e)}</td><td>${esc(nameOf(e)) || '<em>none</em>'}</td><td>${isTarget(e) ? `<span class="${bad ? 'tag' : ''}" style="${bad ? 'background:#fbe5e6;color:#a3262b' : ''}">${b.w}×${b.h}</span>` : '–'}</td></tr>`; }).join('')}</table><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Targets under ${FLOOR}px are flagged. The dialog name comes from its title.</p>`; }
-  return h + (state.view === 'tokens' ? '' : '');
+  const tabs = ['parts', 'props', 'tokens', 'accessibility'];
+  let h = `<h3>Anatomy</h3><div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" data-view="${t}" aria-selected="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
+  const slots = $$('[data-slot]', stage);
+  if (state.view === 'parts') h += `<p class="note">Numbers on the frame match this list.</p><table><tr><th>#</th><th>slot</th><th>element</th><th>role</th></tr>${slots.map((e, i) => `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code></td><td>${e.tagName.toLowerCase()}</td><td>${roleOf(e)}</td></tr>`).join('')}</table>`;
+  if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent.slice(0, 40) + '…')], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><table><tr><th>prop</th><th>type</th><th>value</th></tr>${rows.map((r) => `<tr><td><code>${r[0]}</code></td><td>${esc(r[1])}</td><td><code>${esc(r[2])}</code></td></tr>`).join('')}</table>`; }
+  if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? selectedCard() : '<p class="note">Showing the dialog. Click an element to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
+  if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<table><tr><th>#</th><th>slot</th><th>role</th><th>name</th><th>size</th></tr>${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return `<tr><td>${i + 1}</td><td><code>${e.dataset.slot}</code></td><td>${roleOf(e)}</td><td>${esc(nameOf(e)) || '<em>none</em>'}</td><td>${isTarget(e) ? `<span class="tag" style="${bad ? 'background:var(--bad-wash);color:var(--bad)' : ''}">${w}×${hh}${bad ? ' too small' : ''}</span>` : '–'}</td></tr>`; }).join('')}</table><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
+  return h;
 }
 function editPanel() {
   const el = state.selected; let h = `<h3>Edit</h3>`;
-  if (!el) return h + `<p class="note">Click an element to change its text and tokens. Edits are a live draft until you press Apply.</p>` + draftBlock();
-  h += `<div class="row"><span>Element</span><code>${esc(selectorOf(el))}</code></div>`;
+  if (!el) return h + `<p class="note">Click an element to change its text and tokens. Edits are a live draft until you press Apply.</p><div id="draftWrap">${draftBlock()}</div>`;
+  h += selectedCard();
   if (['title', 'body', 'action'].includes(el.dataset.slot)) h += `<div class="row"><label for="etext">Text</label><input type="text" id="etext" value="${esc(el.textContent.trim())}"></div>`;
   if (el.dataset.slot === 'action') h += `<div class="row"><label for="eintent">Intent</label><select id="eintent"><option value="">neutral</option><option value="primary"${el.classList.contains('primary') ? ' selected' : ''}>primary</option><option value="danger"${el.classList.contains('danger') ? ' selected' : ''}>danger</option></select></div>`;
-  FIELDS.forEach((f) => { const opts = Object.entries(TOKENS[f.group]); h += `<div class="row"><label for="f-${f.key}">${f.label}</label><select id="f-${f.key}" data-key="${f.key}"><option value="">${esc(currentToken(el, f))}</option>${opts.map(([n, v]) => `<option value="${n}">${n} (${v})</option>`).join('')}</select></div>`; });
-  return h + draftBlock();
+  const field = (k) => { const f = FIELDS[k]; return `<div class="row"><label for="f-${f.key}">${f.label}</label><select id="f-${f.key}" data-key="${f.key}"><option value="">Keep ${esc(currentToken(el, f))}</option>${Object.entries(TOKENS[f.group]).map(([n, v]) => `<option value="${n}">${n} (${v})</option>`).join('')}</select></div>`; };
+  h += PRIMARY.map(field).join('') + `<details class="more"><summary>Size</summary>${MORE.map(field).join('')}</details>`;
+  return h + `<div id="draftWrap">${draftBlock()}</div>`;
 }
 function draftBlock() {
   const w = editWarnings(); let h = `<h3>Draft (${state.draft.length})</h3>`;
-  h += state.draft.map((d) => `<div class="comment"><code>${esc(d.selector)}</code> ${esc(d.property)}: ${esc(d.from)} → <code>${esc(d.to)}</code></div>`).join('') || '<p class="note">No changes yet.</p>';
-  h += w.map((x) => `<div class="warn">${esc(x.text)}</div>`).join('');
-  if (state.draft.length) h += (w.length ? `<label><input type="checkbox" id="accept"> I accept these accessibility exceptions</label><br>` : '') + `<button class="primary" id="apply" ${w.length ? 'disabled' : ''}>Apply: send to Claude</button> <button class="plain" id="discard">Discard draft</button><p class="note">Apply sends one structured change set. Claude writes it to code using the tokens above.</p>`;
+  h += state.draft.map((d) => `<div class="card"><code>${esc(d.selector)}</code> ${esc(d.property)}: ${esc(d.from)} → <code>${esc(d.to)}</code></div>`).join('') || '<p class="note">No changes yet.</p>';
+  h += w.map((x) => `<div class="alert">${esc(x.text)}</div>`).join('');
+  if (state.draft.length) h += (w.length ? `<label class="chk"><input type="checkbox" id="accept"> I accept these accessibility exceptions</label>` : '') + `<div class="actions"><button class="b pri" id="apply" type="button" ${w.length ? 'disabled' : ''}>Apply: send to Claude</button><button class="b" id="discard" type="button">Discard draft</button></div><p class="note">Apply sends one structured change set. Claude writes it to code using the tokens above.</p>`;
+  if (state.receipt) h += `<div class="good">${esc(state.receipt)}</div>`;
   return h;
+}
+function refreshDraft() { const wrap = $('#draftWrap'); if (!wrap) return; wrap.innerHTML = draftBlock(); bindDraft(); }
+function bindDraft() {
+  const ap = $('#apply'), ac = $('#accept'), ds = $('#discard');
+  if (ac && ap) ac.onchange = () => (ap.disabled = !ac.checked);
+  if (ds) ds.onclick = discardDraft;
+  if (ap) ap.onclick = async () => {
+    const warnings = editWarnings(); const accepted = warnings.length > 0; const n = state.draft.length;
+    await api('/apply', 'POST', { story: state.story, viewport: state.width, changes: state.draft, warnings, acceptedExceptions: accepted });
+    if (accepted) for (const x of warnings) { const c = await api('/comments', 'POST', { kind: 'accepted-exception', text: x.text, story: state.story, selector: x.selector, status: 'resolved' }); state.comments.push(c); }
+    state.original = stage.innerHTML; state.draft = []; state.receipt = `Sent ${n} change${n > 1 ? 's' : ''} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Claude writes them to code.`;
+    updateStageTop(); drawOverlay(); renderPanel(); announce(state.receipt);
+  };
 }
 function bindPanel() {
   const pin = $('#pin'); if (pin) pin.onclick = async () => { state.viewports = await api('/viewports', 'POST', { width: state.sweep.lastOk }); renderPanel(); };
+  const dis = $('#dismissSweep'); if (dis) dis.onclick = () => { state.sweep = null; renderPanel(); };
+  $$('[data-unpin]').forEach((b) => (b.onclick = async () => { state.viewports = await api('/viewports/' + b.dataset.unpin, 'DELETE'); renderPanel(); }));
   $$('[data-act]').forEach((b) => (b.onclick = () => patchComment(b.dataset.id, { status: b.dataset.act })));
-  const cs = $('#csave'), cd = $('#csend'); if (cs) cs.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, false); }; if (cd) cd.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, true); };
-  $$('#views button').forEach((b) => (b.onclick = () => { state.view = b.dataset.view; frame.classList.toggle('parts', state.view === 'parts'); renderPanel(); }));
-  const et = $('#etext'); if (et) et.oninput = () => { state.selected.textContent = et.value; state.draft = state.draft.filter((d) => !(d.selector === selectorOf(state.selected) && d.property === 'text')); state.draft.push({ selector: selectorOf(state.selected), property: 'text', from: '(original)', to: JSON.stringify(et.value) }); $('#panel .comment:last-child')?.remove(); renderDraftOnly(); };
-  const ei = $('#eintent'); if (ei) ei.onchange = () => { const el = state.selected; el.classList.remove('primary', 'danger'); if (ei.value) el.classList.add(ei.value); state.draft = state.draft.filter((d) => !(d.selector === selectorOf(el) && d.property === 'intent')); state.draft.push({ selector: selectorOf(el), property: 'intent', from: '(original)', to: ei.value || 'neutral' }); renderPanel(); };
-  $$('select[data-key]').forEach((s) => (s.onchange = () => applyEdit(state.selected, FIELDS.find((f) => f.key === s.dataset.key), s.value)));
-  const ap = $('#apply'), ac = $('#accept'), ds = $('#discard');
-  if (ac && ap) ac.onchange = () => (ap.disabled = !ac.checked);
-  if (ds) ds.onclick = () => { const keep = state.selected && selectorOf(state.selected); renderStage(); state.draft = []; renderPanel(); };
-  if (ap) ap.onclick = async () => { const warnings = editWarnings(); const accepted = warnings.length > 0; await api('/apply', 'POST', { story: state.story, viewport: state.width, changes: state.draft, warnings, acceptedExceptions: accepted }); if (accepted) for (const x of warnings) { const c = await api('/comments', 'POST', { kind: 'accepted-exception', text: x.text, story: state.story, selector: x.selector, status: 'resolved' }); state.comments.push(c); } state.draft = []; state.selected = null; renderPanel(); panel.insertAdjacentHTML('afterbegin', '<div class="good">Change set sent. Claude would now write it to code.</div>'); };
+  $$('[data-remove]').forEach((b) => (b.onclick = () => removeComment(b.dataset.remove)));
+  $$('.comment[data-id]').forEach((c) => { const on = (v) => () => { const p = $(`.pin[data-id="${c.dataset.id}"]`); if (p) p.classList.toggle('hot', v); }; c.onmouseenter = on(true); c.onmouseleave = on(false); });
+  const d = $('#desel'); if (d) d.onclick = deselect;
+  const cs = $('#csave'), cd = $('#csend');
+  if (cs) cs.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, false); };
+  if (cd) cd.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, true); };
+  $$('#views button').forEach((b) => (b.onclick = () => { state.view = b.dataset.view; syncModeClasses(); updateStageTop(); drawOverlay(); renderPanel(); }));
+  const et = $('#etext'); if (et) et.oninput = () => { const el = state.selected, s = selectorOf(el); el.textContent = et.value; state.draft = state.draft.filter((x) => !(x.selector === s && x.property === 'text')); state.draft.push({ selector: s, property: 'text', from: '(original)', to: JSON.stringify(et.value) }); afterDraftChange(); };
+  const ei = $('#eintent'); if (ei) ei.onchange = () => { const el = state.selected, s = selectorOf(el); el.classList.remove('primary', 'danger'); if (ei.value) el.classList.add(ei.value); state.draft = state.draft.filter((x) => !(x.selector === s && x.property === 'intent')); state.draft.push({ selector: s, property: 'intent', from: '(original)', to: ei.value || 'neutral' }); afterDraftChange(); };
+  $$('select[data-key]').forEach((s) => (s.onchange = () => applyEdit(state.selected, FIELDS[s.dataset.key], s.value)));
 }
-function renderDraftOnly() { const keep = panel.scrollTop; renderPanel(); panel.scrollTop = keep; }
 
-renderStage(); setWidth(390); updateToolbar(); loadState();
+renderStage(); setWidth(390); syncControls(); updateStageTop(); loadState();
 </script>
 </body>
 </html>
