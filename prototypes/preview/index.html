@@ -112,6 +112,8 @@
   .item-h { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
   .item-h .tag { margin-left:auto; }
   .tag.bad { background:var(--bad-wash); color:var(--bad); }
+  .tag.warn { background:var(--warn-wash); color:var(--warn); }
+  #panel { overflow-wrap:anywhere; } /* a 150-character name with no spaces must not push the rail wider */
   .num { display:inline-grid; place-items:center; min-width:20px; height:20px; border-radius:10px; background:var(--ui-ink); color:#fff; font-size:12px; font-variant-numeric:tabular-nums; align-self:center; }
   .val { margin-top:4px; }
   .badge.hot { outline:3px solid var(--accent); outline-offset:2px; }
@@ -251,7 +253,7 @@ const FIELDS = {
 };
 const PRIMARY = ['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor'], MORE = ['height', 'width'];
 const MODE_LABEL = { test: 'Test', comment: 'Comment', anatomy: 'Anatomy', edit: 'Edit' };
-const state = { mode: 'test', view: 'parts', width: 390, scale: 1, t200: false, story: 'short', selected: null, comments: [], viewports: [], draft: [], original: '', draftHTML: '', viewingOriginal: false, sweep: null, receipt: null, offline: false, demoDismissed: false };
+const state = { mode: 'test', view: 'parts', width: 390, scale: 1, frameH: 520, t200: false, story: 'short', selected: null, comments: [], viewports: [], draft: [], original: '', draftHTML: '', viewingOriginal: false, sweep: null, receipt: null, offline: false, demoDismissed: false };
 const frame = $('#frame'), stage = $('#stage'), panel = $('#panel'), hl = $('#hl'), sel = $('#sel'), pins = $('#pins'), badges = $('#badges'), rail = $('#rail');
 const announce = (m) => { $('#status').textContent = ''; setTimeout(() => ($('#status').textContent = m), 30); };
 
@@ -330,9 +332,10 @@ function checkLayout() {
 function fit() {
   const wrap = $('#stageWrap'); const cs = getComputedStyle(wrap);
   const avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16 - ($('#fw').classList.contains('gutter') ? 88 : 0);
-  state.scale = Math.max(0.25, Math.min(1, avail / state.width));
-  frame.style.width = state.width + 'px'; frame.style.transform = `scale(${state.scale})`;
-  const sc = $('#scaler'); sc.style.width = Math.round(state.width * state.scale) + 'px'; sc.style.height = Math.round(FRAME_H * state.scale) + 'px';
+  /* no floor on the scale: a floor is what made a wide frame overflow a phone. Very small is announced instead (see updateStageTop). */
+  state.scale = Math.max(0.1, Math.min(1, avail / state.width));
+  frame.style.width = state.width + 'px'; frame.style.height = state.frameH + 'px'; frame.style.transform = `scale(${state.scale})`;
+  const sc = $('#scaler'); sc.style.width = Math.round(state.width * state.scale) + 'px'; sc.style.height = Math.round(state.frameH * state.scale) + 'px';
 }
 function setWidth(w, quiet) {
   state.width = Math.max(MIN_W, Math.min(MAX_W, Math.round(w))); fit();
@@ -354,7 +357,7 @@ function drawOverlay() {
   const partsView = state.mode === 'anatomy' && state.view === 'parts'; /* numbered badges take the room pins would use */
   state.comments.filter((c) => !partsView && c.kind !== 'accepted-exception' && c.story === state.story && !state.viewingOriginal).forEach((c) => { const el = resolve(c.selector); if (!el) return; const r = el.getBoundingClientRect(); const d = document.createElement('div'); d.className = 'pin ' + c.status; d.dataset.id = c.id; d.textContent = c.id.slice(1); d.style.left = Math.max(12, r.right - f.left + 10) + 'px'; d.style.top = Math.max(12, r.top - f.top - 10) + 'px'; pins.appendChild(d); });
   badges.innerHTML = '';
-  if (state.mode === 'anatomy' && state.view === 'parts') {
+  if (state.mode === 'anatomy' && state.view === 'parts' && state.scale >= 0.3) { /* below 30% the frame is too small to hold readable numbers; the list still works */
     /* numbers sit in the margin beside the frame; a dotted leader runs from each number to its element */
     const NS = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); svg.style.cssText = 'position:absolute;inset:0;overflow:visible';
@@ -363,6 +366,8 @@ function drawOverlay() {
        channels and lower ones the inner, and a number never sits above its element, so two leaders can never cross. */
     const u = Math.max(0.35, state.scale); /* offsets and channel gaps shrink with the frame so they stay narrower than the gaps between parts */
     const anchors = []; const fr = frame.getBoundingClientRect(); const mid = (fr.left + fr.right) / 2;
+    const fTop = fr.top - f.top, fBot = fr.bottom - f.top; let jBelow = 0, jAbove = 0;
+    const nBelow = $$('[data-slot]', stage).filter((e) => e.getBoundingClientRect().top >= fr.bottom - 1).length;
     const texts = $$('[data-slot]', stage).filter((e) => ['title', 'body', 'close', 'action'].includes(e.dataset.slot)).map((e) => { const r = e.getBoundingClientRect(); return { el: e, l: r.left - f.left, r: r.right - f.left, t: r.top - f.top, b: r.bottom - f.top }; });
     const items = $$('[data-slot]', stage).map((el, i) => {
       const r = el.getBoundingClientRect(); const L = r.left - f.left, R = r.right - f.left, y0 = r.top - f.top + Math.min(14 * u, r.height / 2);
@@ -373,8 +378,11 @@ function drawOverlay() {
       const ax = side === 'left' ? L : R;
       /* parts that share a corner (header and title) enter the same edge at different heights */
       const ys = [r.top - f.top + Math.min(14 * u, r.height / 2), r.bottom - f.top - Math.min(10 * u, r.height / 2), (r.top + r.bottom) / 2 - f.top];
-      const ay = ys.find((y) => !anchors.some((a) => a.side === side && Math.abs(a.y - y) < 10 * u && Math.abs(a.x - ax) < 40 * u)) ?? ys[0];
-      anchors.push({ side, x: ax, y: ay }); return { n: i + 1, side, ax, ay };
+      /* a part the frame has cut off completely cannot be pointed at: its leader ends on the frame edge, in a ring */
+      const isOut = r.top >= fr.bottom - 1 || r.bottom <= fr.top + 1; let ay;
+      if (isOut) { /* their numbers are spaced a full step apart up the frame edge, so they never spill below it */ ay = r.top >= fr.bottom - 1 ? Math.max(fTop + 8, fBot - 8 - 26 * (nBelow - 1 - jBelow++)) : fTop + 8 + 26 * jAbove++; }
+      else ay = ys.find((y) => !anchors.some((a) => a.side === side && Math.abs(a.y - y) < 10 * u && Math.abs(a.x - ax) < 40 * u)) ?? ys[0];
+      anchors.push({ side, x: ax, y: ay }); return { n: i + 1, side, ax, ay, out: isOut };
     }).sort((a, b) => a.ay - b.ay || a.n - b.n);
     const edge = { left: Math.min(...items.filter((i) => i.side === 'left').map((i) => i.ax)) - 8 * u, right: Math.max(...items.filter((i) => i.side === 'right').map((i) => i.ax)) + 8 * u };
     const lastY = { left: -Infinity, right: -Infinity }; const used = { left: 0, right: 0 };
@@ -384,7 +392,7 @@ function drawOverlay() {
       const bx = it.side === 'left' ? -22 : f.width - 22; const ex = it.side === 'left' ? bx + 11 : bx - 11;
       const line = document.createElementNS(NS, 'polyline'); line.setAttribute('points', `${ex},${by} ${cx},${by} ${cx},${it.ay} ${it.ax},${it.ay}`); line.setAttribute('data-n', it.n);
       Object.entries({ fill: 'none', stroke: '#1c2026', 'stroke-width': '1.5', 'stroke-dasharray': '2 4', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }).forEach(([k, v]) => line.setAttribute(k, v)); svg.appendChild(line);
-      const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('cx', it.ax); dot.setAttribute('cy', it.ay); dot.setAttribute('r', 3); dot.setAttribute('fill', '#1c2026'); svg.appendChild(dot);
+      const dot = document.createElementNS(NS, 'circle'); dot.setAttribute('cx', it.ax); dot.setAttribute('cy', it.ay); dot.setAttribute('r', it.out ? 4 : 3); dot.setAttribute('fill', it.out ? '#fff' : '#1c2026'); if (it.out) { dot.setAttribute('stroke', '#1c2026'); dot.setAttribute('stroke-width', '1.5'); } svg.appendChild(dot);
       const b = document.createElement('div'); b.className = 'badge'; b.dataset.n = it.n; b.textContent = it.n; b.style.left = bx + 'px'; b.style.top = by + 'px';
       b.onmouseenter = () => hotPart(it.n - 1, true); b.onmouseleave = () => hotPart(it.n - 1, false); b.onclick = () => togglePart(it.n - 1); /* a number on the frame selects its part too */
       badges.appendChild(b);
@@ -395,7 +403,7 @@ function drawOverlay() {
 function updateStageTop() {
   const chips = { test: 'Test: use the component', comment: 'Comment: click an element', anatomy: 'Anatomy: ' + state.view, edit: 'Edit: click an element, changes are a draft' };
   $('#chip').textContent = chips[state.mode];
-  $('#scaleNote').textContent = state.scale < 0.995 ? `Shown at ${Math.round(state.scale * 100)}% to fit; sizes are real pixels` : '';
+  $('#scaleNote').textContent = state.scale < 0.995 ? `Shown at ${Math.round(state.scale * 100)}% to fit; sizes are real pixels${state.scale < 0.3 ? '. Too small to number the parts here: pick a narrower width' : ''}` : '';
   const n = state.draft.length;
   $('#draftStrip').innerHTML = n ? `<span class="draftpill">Draft: ${n} change${n > 1 ? 's' : ''} on this frame${state.viewingOriginal ? ' (showing original)' : ''}</span> <button class="b sm" id="toggleOrig" type="button">${state.viewingOriginal ? 'Show draft' : 'Show original'}</button> <button class="b sm" id="discardTop" type="button">Discard</button>` : '';
   const t = $('#toggleOrig'); if (t) t.onclick = toggleOriginal; const d = $('#discardTop'); if (d) d.onclick = discardDraft;
@@ -421,7 +429,13 @@ window.addEventListener('resize', () => { fit(); updateStageTop(); drawOverlay()
 
 /* frame resize: pointer and keyboard */
 const handle = $('#handle');
-handle.addEventListener('pointerdown', (e) => { handle.setPointerCapture(e.pointerId); const left = $('#scaler').getBoundingClientRect().left; const move = (ev) => setWidth((ev.clientX - left) / state.scale); const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); renderPanel(); }; handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); });
+/* One pointer owns a drag. A second finger is ignored, and the drag ends cleanly if the browser cancels it, capture is lost, or the window loses focus. */
+let drag = null;
+function endDrag() { if (!drag) return; const id = drag.id; drag = null; try { handle.releasePointerCapture(id); } catch {} renderPanel(); }
+handle.addEventListener('pointerdown', (e) => { if (drag) return; drag = { id: e.pointerId, left: $('#scaler').getBoundingClientRect().left }; try { handle.setPointerCapture(e.pointerId); } catch {} });
+handle.addEventListener('pointermove', (e) => { if (drag && e.pointerId === drag.id) setWidth((e.clientX - drag.left) / state.scale); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach((t) => handle.addEventListener(t, (e) => { if (drag && e.pointerId === drag.id) endDrag(); }));
+window.addEventListener('blur', endDrag);
 handle.addEventListener('keydown', (e) => { const step = e.shiftKey ? 50 : 10; if (e.key === 'ArrowRight' || e.key === 'ArrowUp') setWidth(state.width + step); else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') setWidth(state.width - step); else if (e.key === 'Home') setWidth(MIN_W); else if (e.key === 'End') setWidth(MAX_W); else return; e.preventDefault(); });
 
 /* width sweep: walk down from the current width until the first break. The rule: no clipping and every button at least 24px. */
@@ -538,17 +552,31 @@ function commentPanel() {
   if (!el) return h + `<p class="note">Click an element in the frame to attach a comment.</p>`;
   return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div>`;
 }
+/* which parts the frame cuts off: out = wholly outside it, cut = at least partly outside it */
+function frameFit() {
+  const fr = frame.getBoundingClientRect();
+  return $$('[data-slot]', stage).map((e) => { const r = e.getBoundingClientRect(); const out = r.top >= fr.bottom - 1 || r.bottom <= fr.top + 1 || r.left >= fr.right - 1 || r.right <= fr.left + 1; return { out, cut: out || r.bottom > fr.bottom + 1 || r.top < fr.top - 1 || r.right > fr.right + 1 || r.left < fr.left - 1 }; });
+}
+function setFrameH(h) { state.frameH = h; fit(); drawOverlay(); updateStageTop(); renderPanel(); }
+function fitNotice() {
+  const cut = frameFit().map((f, i) => (f.cut ? i + 1 : 0)).filter(Boolean); let h = '';
+  if (cut.length) h += `<div class="caution">${cut.length === 1 ? 'Part' : 'Parts'} ${cut.join(', ')} ${cut.length === 1 ? 'is' : 'are'} cut off by the frame, so ${cut.length === 1 ? 'it is' : 'they are'} not fully visible here. <button class="b sm" id="growFrame" type="button">Grow frame to fit</button></div>`;
+  if (state.frameH !== 520) h += `<p class="note">Frame grown to ${state.frameH}px. <button class="b sm" id="resetFrame" type="button">Reset height</button></p>`;
+  return h;
+}
 function anatomyPanel() {
   const tabs = ['parts', 'props', 'tokens', 'accessibility'];
-  let h = `<h3>Anatomy</h3>${selectedCard()}<div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" data-view="${t}" aria-selected="${state.view === t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
+  let h = `<h3>Anatomy</h3>${selectedCard()}${fitNotice()}<div class="tabs" id="views" role="tablist" aria-label="Anatomy view">${tabs.map((t) => `<button type="button" role="tab" id="tab-${t}" data-view="${t}" aria-selected="${state.view === t}" aria-controls="anatomyPanel" tabindex="${state.view === t ? 0 : -1}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>`;
+  const head = h;
   const slots = $$('[data-slot]', stage); const selIdx = state.selected ? slots.indexOf(state.selected) : -1;
   /* a row is a button: it selects the part, and hovering or focusing it lights up the part on the frame */
-  const row = (e, i, note, tag) => `<button type="button" class="item item-btn${i === selIdx ? ' sel' : ''}" data-part="${i}" aria-pressed="${i === selIdx}"><span class="item-h"><span class="num">${i + 1}</span><code>${e.dataset.slot}</code>${tag || ''}</span><span class="note">${note}</span></button>`;
+  const fitInfo = frameFit();
+  const row = (e, i, note, tag) => `<button type="button" class="item item-btn${i === selIdx ? ' sel' : ''}" data-part="${i}" aria-pressed="${i === selIdx}"><span class="item-h"><span class="num">${i + 1}</span><code>${e.dataset.slot}</code>${tag || ''}${fitInfo[i].out ? '<span class="tag bad">outside frame</span>' : fitInfo[i].cut ? '<span class="tag warn">cut off</span>' : ''}</span><span class="note">${note}</span></button>`;
   if (state.view === 'parts') h += `<p class="note">Select a part here or on the frame. Numbers match the frame.</p><div class="list">${slots.map((e, i) => row(e, i, `${e.tagName.toLowerCase()} · ${roleOf(e)}${isTarget(e) || e.tagName === 'H2' ? ` · “${esc(nameOf(e))}”` : ''}`)).join('')}</div>`;
   if (state.view === 'props') { const rows = [['open', 'boolean', 'true'], ['title', 'ReactNode (required)', JSON.stringify($('[data-slot="title"]', stage).textContent)], ['description', 'ReactNode', JSON.stringify($('[data-slot="body"]', stage).textContent)], ['role', "'dialog' | 'alertdialog'", "'dialog'"], ['size', "'sm' | 'md' | 'lg' | 'fullscreen'", "'md'"], ['dismissOnOutsideClick', 'boolean', 'false'], ['showCloseButton', 'boolean', 'true']]; h += `<p class="note">Story: ${state.story}. Types and JSDoc come from the component source.</p><div class="list">${rows.map((r) => `<div class="item"><div class="item-h"><code>${r[0]}</code><span class="note">${esc(r[1])}</span></div><div class="val"><code>${esc(r[2])}</code></div></div>`).join('')}</div>`; }
   if (state.view === 'tokens') { const el = state.selected || $('[data-slot="dialog"]', stage); h += (state.selected ? '' : '<p class="note">Showing the dialog. Select a part on the frame, or in Parts, to inspect another.</p>') + `<table><tr><th>property</th><th>token</th></tr>${['padding', 'borderRadius', 'fontSize', 'color', 'backgroundColor', 'height'].map((k) => `<tr><td>${FIELDS[k].label}</td><td><code>${esc(currentToken(el, FIELDS[k]))}</code></td></tr>`).join('')}</table>`; }
   if (state.view === 'accessibility') { const focus = $$('button,[tabindex]', stage); h += `<div class="list">${slots.map((e, i) => { const [w, hh] = sizeOf(e); const bad = isTarget(e) && (w < FLOOR || hh < FLOOR); return row(e, i, `${roleOf(e)}${nameOf(e) ? ` · “${esc(nameOf(e))}”` : ' · <em>no accessible name</em>'}`, isTarget(e) ? `<span class="tag${bad ? ' bad' : ''}">${w}×${hh}px${bad ? ' too small' : ''}</span>` : ''); }).join('')}</div><h3>Focus order</h3><ol>${focus.map((f) => `<li>${esc(nameOf(f))}</li>`).join('')}</ol><p class="note">Buttons under ${FLOOR}px are flagged. The dialog takes its name from its title.</p>`; }
-  return h;
+  return head + `<div role="tabpanel" id="anatomyPanel" aria-labelledby="tab-${state.view}" tabindex="0">` + h.slice(head.length) + '</div>';
 }
 function editPanel() {
   const el = state.selected; let h = `<h3>Edit</h3>`;
@@ -597,7 +625,13 @@ function bindPanel() {
   const cs = $('#csave'), cd = $('#csend');
   if (cs) cs.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, false); };
   if (cd) cd.onclick = () => { const t = $('#ctext').value.trim(); if (t) saveComment(t, true); };
-  $$('#views button').forEach((b) => (b.onclick = () => { state.view = b.dataset.view; syncModeClasses(); updateStageTop(); drawOverlay(); renderPanel(); }));
+  const goView = (v, focus) => { state.view = v; syncModeClasses(); updateStageTop(); drawOverlay(); renderPanel(); if (focus) { const t = $(`#tab-${v}`); if (t) t.focus(); } };
+  $$('#views button').forEach((b) => {
+    b.onclick = () => goView(b.dataset.view, false);
+    b.onkeydown = (e) => { const order = ['parts', 'props', 'tokens', 'accessibility']; const i = order.indexOf(b.dataset.view); const to = { ArrowRight: order[(i + 1) % 4], ArrowLeft: order[(i + 3) % 4], Home: order[0], End: order[3] }[e.key]; if (to) { e.preventDefault(); goView(to, true); } };
+  });
+  const gf = $('#growFrame'); if (gf) gf.onclick = () => setFrameH(Math.max(520, $('[data-slot="dialog"]', stage).offsetHeight + 24));
+  const rf = $('#resetFrame'); if (rf) rf.onclick = () => setFrameH(520);
   const et = $('#etext'); if (et) et.oninput = () => { const el = state.selected, s = selectorOf(el); el.textContent = et.value; state.draft = state.draft.filter((x) => !(x.selector === s && x.property === 'text')); state.draft.push({ selector: s, property: 'text', from: '(original)', to: JSON.stringify(et.value) }); afterDraftChange(); };
   const ei = $('#eintent'); if (ei) ei.onchange = () => { const el = state.selected, s = selectorOf(el); el.classList.remove('primary', 'danger'); if (ei.value) el.classList.add(ei.value); state.draft = state.draft.filter((x) => !(x.selector === s && x.property === 'intent')); state.draft.push({ selector: s, property: 'intent', from: '(original)', to: ei.value || 'neutral' }); afterDraftChange(); };
   $$('select[data-key]').forEach((s) => (s.onchange = () => applyEdit(state.selected, FIELDS[s.dataset.key], s.value)));
