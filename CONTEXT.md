@@ -18,7 +18,17 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Review**: The command that audits existing components against `DESIGN.md` and the mobile-first and AI-usability goals.
 
-**Visual test**: The automated checks on a component's Storybook stories, run with Playwright: a screenshot pixel comparison and an accessibility scan. It writes a text report with a list of improvements.
+**Visual test**: The automated checks on a component's Storybook stories, run with Playwright: a screenshot pixel comparison and an accessibility scan. It writes a text report with a list of improvements, and can open the Preview afterwards.
+
+**Preview**: The local live page, opened from the visual test, where a person uses a built component by hand. It has four modes (test, comment, anatomy, edit), a resizable frame, and a sweep that finds the narrowest width at which the component still works. It is generated into a scratch folder and never committed.
+
+**Comment**: A note a person attaches to a selected element in the Preview. It records the text, the story, the viewport and text scale, the element's selector, role, accessible name, position and size, a cropped screenshot, and a status (open, addressed, resolved). Only the person marks a comment resolved.
+
+**Anatomy mode**: The Preview mode that shows how a component is built: its numbered parts, props with their current values, the tokens it uses, and an accessibility view.
+
+**Edit mode**: The Preview mode where a person changes text, variants and token-based values as a live draft, then applies one change set that the agent writes to code using the tokens in `DESIGN.md`. Accessibility problems show while editing, and applying them needs explicit acceptance.
+
+**Slot**: A named part of a component, marked in generated code with `data-slot` and named in the component card.
 
 **Visual review**: Claude's judgement of the screenshots of a component's rendered stories against `DESIGN.md` and the component card, reported as text. The screenshots are also left for the user to confirm.
 
