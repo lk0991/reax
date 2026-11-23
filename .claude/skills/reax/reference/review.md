@@ -1,6 +1,6 @@
 # review
 
-Audit existing components against `DESIGN.md`, the component cards and the mobile-first and AI-usability goals. Findings go to **chat only**. Nothing is edited and no file is written.
+Audit existing components against `DESIGN.md`, the component cards and the mobile-first and AI-usability goals. Findings go to chat, and are saved to `visual-report/review.json` so `improve` can use them in a later conversation. No component is edited.
 
 ## Steps
 
@@ -14,7 +14,14 @@ Audit existing components against `DESIGN.md`, the component cards and the mobil
    - **API**: typed props with JSDoc, names consistent with the project's pattern, `data-slot` on every part, a story for every state, no duplicate of an existing component.
    - **AI usability**: a clear props surface and story coverage so an agent can use the component without reading its internals.
 4. **Report** per component, worst first. Use three groups: **Blocking** (breaks a Requirement or the component), **Should fix** (deviates from a Default, or a token, API or story problem), **Looks fine**. A Default the project or `DESIGN.md` overrides on purpose is not a finding. Each finding: what, where as `path:line`, why in a few words, the fix in one line. Cite the rule, such as WCAG 2.2 SC 2.5.8 or the card check number.
-5. **Do not pad.** If a group is empty, say "none". Do not list things that are fine except in "Looks fine", one line.
-6. **Close** by offering `visual-test` for rendered evidence and `improve` for a written list. Offer to make the fixes, one component at a time. Make none unprompted.
+5. **Save the findings** to `visual-report/review.json` (create the folder if needed; it is not committed). One entry per reviewed component, replacing that component's earlier entry and keeping the others:
+
+   ```json
+   { "Button": { "reviewedAt": "2026-11-23T09:00:00Z", "findings": [ { "rank": "blocking", "what": "Icon-only button has no name", "where": "src/components/Button/Button.tsx:42", "rule": "WCAG 2.2 SC 4.1.2", "fix": "Add aria-label", "verified": true } ] } }
+   ```
+
+   `rank` is `blocking` or `should-fix`. Set `verified: false` for a finding that needs visual-test. A component with no findings gets an empty list, so `improve` knows it was reviewed.
+6. **Do not pad.** If a group is empty, say "none". Do not list things that are fine except in "Looks fine", one line.
+7. **Close** by offering `visual-test` for rendered evidence and `improve` for a written list. Offer to make the fixes, one component at a time. Make none unprompted.
 
 A finding you could not verify (it depends on rendering) is marked "not verified, needs visual-test".

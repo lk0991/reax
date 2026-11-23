@@ -1,10 +1,10 @@
 # improve
 
-Turn the latest visual-test run and any review findings from this session into one prioritised list, written to `visual-report/improvements.md`.
+Turn the latest visual-test run and the saved review findings into one prioritised list, written to `visual-report/improvements.md`.
 
 ## Steps
 
-1. **Read the inputs**: `visual-report/report.md` and `run.json` (if missing, say so and offer `visual-test`), the review findings from this conversation, and open comments in `visual-report/comments.json` that are not resolved.
+1. **Read the inputs**: `visual-report/report.md` and `run.json` (if missing, say so and offer `visual-test`), the saved review findings in `visual-report/review.json` (if missing, say no review has been saved and offer `review`), and open comments in `visual-report/comments.json` that are not resolved.
 2. **Merge and de-duplicate.** One entry per underlying problem, even if it appears at four widths or in three stories.
 3. **Rank** as follows, and say the rank in each entry:
    1. **Blocking**: axe serious or critical, a story that could not run, a clipped or unreachable control, a target under 24px.

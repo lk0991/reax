@@ -22,7 +22,7 @@ The first word of the request picks the command. With no command, infer it from 
 | `init` | Scan the project and write `DESIGN.md` and `.reax/design.json` | [reference/init.md](reference/init.md) |
 | `from-text` | Build a component from a text description | [reference/from-text.md](reference/from-text.md) |
 | `from-figma` | Build a component from an image, screenshot or Figma link | [reference/from-figma.md](reference/from-figma.md) |
-| `review` | Audit existing components, findings to chat | [reference/review.md](reference/review.md) |
+| `review` | Audit existing components, findings to chat and `visual-report/review.json` | [reference/review.md](reference/review.md) |
 | `storybook` | Install and configure Storybook, write missing stories | [reference/storybook.md](reference/storybook.md) |
 | `visual-test` | Run the visual and accessibility tests, review the screenshots, open the preview | [reference/visual-test.md](reference/visual-test.md) |
 | `improve` | Turn the latest run and review findings into a prioritised list | [reference/improve.md](reference/improve.md) |
@@ -34,7 +34,7 @@ Read the reference for the command before you act. Do not read the others.
 1. **Load the design first.** Before creating or reviewing anything, run `node scripts/design.mjs check --root <project>` (paths below are relative to this skill's folder). Exit 0: run `load` and use it. Missing: offer `init`, and carry on with the card defaults only if the person declines. Stale: say what drifted and offer `init`. Never refresh silently.
 2. **Precedence.** The request wins, then the project (`DESIGN.md`, its existing components and token files), then the card and shared defaults. Accessibility requirements (the Requirements lists in the cards and [components/_rules.md](components/_rules.md), each citing its WCAG success criterion) apply whatever the order says. Defaults are overridable. If a request conflicts with one, do the accessible thing and say so in one line. A chat request never overrides one; only an exception accepted in Edit mode does.
 3. **Ask before installing** anything into the project. Say which packages and why, then wait. Skill dependencies (Playwright, axe, pixelmatch) install into `~/.cache/reax`, not the project: run `node scripts/setup.mjs --check`, and `--install` only after the person agrees.
-4. **Never edit an existing component unprompted.** `review` reports, `improve` lists. A person asks for the change, or approves it in the preview's Edit mode.
+4. **Never edit an existing component unprompted.** `review` reports and saves its findings, `improve` lists. A person asks for the change, or approves it in the preview's Edit mode.
 5. **Use the project's tokens, by their real names.** Use the `css` name `design.mjs load` reports for each token: a `var(--…)` custom property, or the project's theme key or utility class when its `Language` is utility classes. A token marked `cssDerived` has no recorded project name: check that it exists before using it. Never invent a colour, size or radius that is not a token. If a needed token does not exist, say so, use the nearest and list it as a gap.
 6. **Small, finished output.** A component is a folder (below). Say what you wrote in a few lines. Do not paste the code back.
 7. **Report what ran.** If a check could not run, say that and why. Never describe a result you did not see.
@@ -72,7 +72,7 @@ Every part of a component carries `data-slot="name"`, using the slot names from 
 | `.reax/baselines/` | Approved reference screenshots | yes |
 | `.reax/visual-test.json` | Optional settings | yes |
 | `.reax/viewports.json` | Widths pinned in the preview | yes |
-| `visual-report/` | `report.md`, `run.json`, screenshots, comments, `improvements.md` | no, add to `.gitignore` |
+| `visual-report/` | `report.md`, `run.json`, screenshots, comments, `review.json`, `improvements.md` | no, add to `.gitignore` |
 
 ## Scripts
 
