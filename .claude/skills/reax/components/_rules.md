@@ -47,8 +47,7 @@ Request, then project (`DESIGN.md`, existing components, token files), then card
 - **Disabled**: native `disabled` when an action is permanently unavailable. When people need to learn why, `aria-disabled="true"`, keep focus, and explain with `aria-describedby`. Pending keeps focus and announces.
 - **Field wrapper**: `disabled` and `required` are set once on the field wrapper, which forwards them to the control.
 - **Select**: native on touch. **Pagination**: previous and next with "Page X of Y"; numbered links opt-in.
-- **Toast**: `role="status"`, errors `role="alert"`, never steal focus, errors never auto-dismiss, always a dismiss control.
-- **Tooltip**: label or description only, opens on hover and focus, Esc closes, never holds essential content.
+- **Toast** and **Tooltip**: see their cards (`toast.md`, `tooltip.md`).
 
 ## Stories
 

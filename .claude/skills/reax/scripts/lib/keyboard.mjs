@@ -6,6 +6,7 @@
 /** The checks a card asks for, as named in its "Keyboard checks" section. */
 export const CARD_CHECKS = {
   dialog: ['dialog-focus-in', 'dialog-esc', 'dialog-focus-return'],
+  drawer: ['dialog-focus-in', 'dialog-esc', 'dialog-focus-return'], // a modal drawer is a dialog
   checkbox: ['space-toggles'],
   switch: ['space-toggles'],
   radio: ['arrows-select'],
