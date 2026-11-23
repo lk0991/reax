@@ -9,7 +9,7 @@ Build a component from a design: an image, a screenshot, or a Figma link.
 
 ## Steps
 
-1. **Load the design** and the card(s), as in [from-text](from-text.md) steps 1 and 2.
+1. **Find what is needed, load the card(s), and ask once**, exactly as in [from-text](from-text.md) steps 1 to 3: the questions about the component cover what the design does not show, and the same one plan covers `init` and every install.
 2. **Read the design into a spec** before writing code, and show it in a short list: the parts (matching card slots where they exist), the variants and states visible, text content, measured sizes and spacing, colours.
 3. **Map every value to a project token.** Take the nearest token for each colour, space, radius and type size. If a value is within a small tolerance, use the token without comment. If it is far from any token, use the nearest and list it as a deviation. Never write a raw value to match the picture.
 4. **Accessibility beats the picture**: if the design shows a 20px touch target or low-contrast text, build it accessibly (24px floor, 4.5:1 text contrast) and report the difference.
