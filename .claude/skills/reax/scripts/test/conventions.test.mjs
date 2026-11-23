@@ -94,3 +94,34 @@ test('story tags are read from the meta, not from a story', () => {
   const c = analyzeComponents([src('A'), story('A'), src('B'), story('B'), src('C'), noMetaTags], { componentsDir: 'src/ui' });
   assert.deepEqual(c.stories.tags.options?.map((o) => o.value) ?? [c.stories.tags.value], [['autodocs'], []]);
 });
+
+test('deviations: each component that breaks a recorded convention, with what was expected and found', async () => {
+  const { deviations } = await import('../lib/conventions.mjs');
+  const recorded = analyzeComponents(files, { componentsDir: 'src/ui' });
+  const now = analyzeComponents(files, { componentsDir: 'src/ui' });
+  const all = deviations(recorded, now);
+  const panel = all.filter((d) => d.component === 'Panel');
+  assert.ok(panel.some((d) => d.key === 'code.definition' && d.expected === 'forwardRef' && d.found === 'arrow'));
+  assert.ok(panel.some((d) => d.key === 'props.emphasis' && d.expected === 'variant' && d.found === 'kind'));
+  assert.ok(panel.some((d) => d.key === 'layout.files'));
+  assert.ok(panel.every((d) => d.label && d.rank === 'should-fix'));
+  assert.equal(all.filter((d) => d.component === 'Button').length, 0);
+  // only the named components
+  assert.equal(deviations(recorded, now, ['Button']).length, 0);
+});
+
+test('deviations use a decided value for a mixed convention, and skip an undecided one', async () => {
+  const { deviations } = await import('../lib/conventions.mjs');
+  const split = [...comp('A', { ref: false }), ...comp('B', { ref: false }), ...comp('C'), ...comp('D')];
+  const recorded = analyzeComponents(split, { componentsDir: 'src/ui' });
+  assert.equal(deviations(recorded, recorded).filter((d) => d.key === 'code.definition').length, 0);
+  recorded.code.definition.decided = 'forwardRef';
+  assert.deepEqual(deviations(recorded, recorded).filter((d) => d.key === 'code.definition').map((d) => d.component).sort(), ['A', 'B']);
+});
+
+test('a new component that breaks the recorded conventions is caught', async () => {
+  const { deviations } = await import('../lib/conventions.mjs');
+  const recorded = analyzeComponents(files, { componentsDir: 'src/ui' });
+  const now = analyzeComponents([...files, ...comp('Fresh', { ref: false, module: false })], { componentsDir: 'src/ui' });
+  assert.ok(deviations(recorded, now, ['Fresh']).some((d) => d.key === 'styling.approach' && d.found === 'plain-css'));
+});

@@ -2,14 +2,9 @@
 // init. The Overview, Template and Notes are prose (the person's edits to Overview and Notes are kept on a re-run); the
 // convention tables are regenerated. Decision: ADR 0006.
 import { splitSections } from './write.mjs';
+import { CONVENTION_GROUPS } from './conventions.mjs';
 
-const GROUPS = [
-  ['Layout', 'layout', { folderPerComponent: 'One folder per component', folderCase: 'Folder name case', files: 'Files in a component folder', fileCase: 'Component file name case' }],
-  ['Code', 'code', { definition: 'How a component is declared', export: 'Export', propsType: 'Props type', propsExtendNative: 'Props extend the native element\'s attributes', jsdocOnProps: 'JSDoc on props', indexExports: 'index file' }],
-  ['Styling', 'styling', { approach: 'Styling approach', variantSelector: 'How styles select a variant', classNaming: 'Class names', dataSlot: '`data-slot` on parts' }],
-  ['Props', 'props', { emphasis: 'Name of the emphasis prop', size: 'Size values', booleanPrefix: 'Boolean prop prefix', pressHandler: 'Press handler name' }],
-  ['Stories', 'stories', { present: 'Every component has stories', format: 'Story format', titlePrefix: 'Story title', tags: 'Meta tags', storyShape: 'Story shape' }],
-];
+const GROUPS = CONVENTION_GROUPS;
 const HUMAN = new Set(['Overview', 'Notes']);
 
 const show = (v) => (Array.isArray(v) ? (v.length ? v.map((x) => `\`${x}\``).join(', ') : 'none') : typeof v === 'boolean' ? (v ? 'yes' : 'no') : v === '' ? '(no prefix)' : `\`${v}\``);

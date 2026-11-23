@@ -11,5 +11,5 @@
 
 - A pattern followed by about 70% or more of components is the convention; a closer split is "mixed". `init` asks about mixed ones that matter (within its three questions) and recommends the most recently changed pattern.
 - The convention tables are regenerated on each `init`; the Overview and Notes are the person's and are kept.
-- `review` does not report deviations from the conventions (for now). `COMPONENTS.md` counts as "the project" in the precedence order: it beats card defaults, never accessibility Requirements.
+- `review` reports a component that breaks a recorded convention, as Should fix at most and only when its Overview, Notes, card or a Requirement does not explain it. `conventions.mjs --check` lists the deviations; the agent judges them. `COMPONENTS.md` counts as "the project" in the precedence order: it beats card defaults, never accessibility Requirements.
 - Detection is heuristic (regular expressions, no TypeScript compiler). The counts show how much to trust each row.

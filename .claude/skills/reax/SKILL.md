@@ -50,7 +50,7 @@ src/components/Button/
   index.ts            re-exports the component (per folder, no directory-wide barrel)
 ```
 
-This is the shape for a project with no components yet. A project with components has its own, recorded by `init` in **`COMPONENTS.md`**: folder layout and file names, how components and props are declared, how styles select variants, prop naming, and how stories are written, each with how many components follow it. New components and stories follow `COMPONENTS.md`, so they read like the ones already there; the card still decides anatomy, slots, states and Requirements. Use the components directory the project already uses (`init` records it). No separate unit test: the story is the test.
+This is the shape for a project with no components yet. A project with components has its own, recorded by `init` in **`COMPONENTS.md`**: folder layout and file names, how components and props are declared, how styles select variants, prop naming, and how stories are written, each with how many components follow it. New components and stories follow `COMPONENTS.md`, so they read like the ones already there, and `review` reports a component that breaks it without a recorded reason (as Should fix); the card still decides anatomy, slots, states and Requirements. Use the components directory the project already uses (`init` records it). No separate unit test: the story is the test.
 
 Every part of a component carries `data-slot="name"`, using the slot names from the component card. The preview's comment, anatomy and edit modes and the report all depend on them.
 

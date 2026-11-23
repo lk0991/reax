@@ -7,6 +7,38 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 export const CONVENTION_SHARE = 0.7;
+
+/** Every convention, by group, with the label COMPONENTS.md and review use. */
+export const CONVENTION_GROUPS = [
+  ['Layout', 'layout', { folderPerComponent: 'One folder per component', folderCase: 'Folder name case', files: 'Files in a component folder', fileCase: 'Component file name case' }],
+  ['Code', 'code', { definition: 'How a component is declared', export: 'Export', propsType: 'Props type', propsExtendNative: 'Props extend the native element\'s attributes', jsdocOnProps: 'JSDoc on props', indexExports: 'index file' }],
+  ['Styling', 'styling', { approach: 'Styling approach', variantSelector: 'How styles select a variant', classNaming: 'Class names', dataSlot: '`data-slot` on parts' }],
+  ['Props', 'props', { emphasis: 'Name of the emphasis prop', size: 'Size values', booleanPrefix: 'Boolean prop prefix', pressHandler: 'Press handler name' }],
+  ['Stories', 'stories', { present: 'Every component has stories', format: 'Story format', titlePrefix: 'Story title', tags: 'Meta tags', storyShape: 'Story shape' }],
+];
+
+/**
+ * Where components break the conventions COMPONENTS.md recorded: compares each component's current value (from a
+ * fresh analysis) with the recorded convention, or with the person's decision for a mixed one. Undecided mixed
+ * conventions are skipped. A deviation is never more than "should fix": conventions are not Requirements.
+ */
+export function deviations(recorded, now, only = null) {
+  const out = []; const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const want = only ? new Set(only.map((n) => n.toLowerCase())) : null;
+  for (const [, group, labels] of CONVENTION_GROUPS) {
+    for (const [key, label] of Object.entries(labels)) {
+      const r = recorded?.[group]?.[key]; const n = now?.[group]?.[key];
+      if (!r || !n?.byComponent) continue;
+      const expected = r.decided !== undefined ? r.decided : r.status === 'convention' ? r.value : undefined;
+      if (expected === undefined) continue;
+      for (const [component, found] of Object.entries(n.byComponent)) {
+        if (want && !want.has(component.toLowerCase())) continue;
+        if (!same(found, expected)) out.push({ component, key: `${group}.${key}`, label, expected, found, followedBy: r.decided !== undefined ? 'decided' : `${r.count} of ${r.total}`, rank: 'should-fix' });
+      }
+    }
+  }
+  return out;
+}
 const SOURCE = /\.(tsx|jsx)$/;
 const SKIP = /\.(stories|test|spec)\.[jt]sx?$/;
 const EMPHASIS = ['variant', 'kind', 'appearance', 'emphasis', 'look', 'tone', 'intent'];
@@ -15,7 +47,7 @@ const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** One vote: items are { component, value, mtime }; values compare by JSON. */
 export function vote(items) {
   const counted = items.filter((i) => i.value !== undefined && i.value !== null);
-  if (!counted.length) return { status: 'none', value: null, count: 0, total: 0 };
+  if (!counted.length) return { status: 'none', value: null, count: 0, total: 0, byComponent: {} };
   const groups = new Map();
   for (const i of counted) {
     const k = JSON.stringify(i.value);
@@ -24,7 +56,8 @@ export function vote(items) {
   }
   const options = [...groups.values()].sort((a, b) => b.count - a.count || b.latest - a.latest);
   const top = options[0]; const total = counted.length; const share = top.count / total;
-  const base = { value: top.value, count: top.count, total, share: Math.round(share * 100) / 100, examples: top.components.slice(0, 3) };
+  const byComponent = Object.fromEntries(counted.map((i) => [i.component, i.value]));
+  const base = { value: top.value, count: top.count, total, share: Math.round(share * 100) / 100, examples: top.components.slice(0, 3), byComponent };
   if (share >= CONVENTION_SHARE) return { ...base, status: 'convention', exceptions: counted.filter((i) => JSON.stringify(i.value) !== JSON.stringify(top.value)).map((i) => i.component) };
   const recent = [...options].sort((a, b) => b.latest - a.latest)[0];
   return { ...base, status: 'mixed', options: options.map((o) => ({ value: o.value, count: o.count, components: o.components })), recommended: recent.value };
