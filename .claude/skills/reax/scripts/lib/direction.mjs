@@ -11,7 +11,8 @@ const TEXT_STEPS = [['xs', -2], ['sm', -1], ['base', 0], ['lg', 1], ['xl', 2], [
 const BREAKPOINTS = { sm: '390px', md: '768px', lg: '1280px' };
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+import { page, esc } from './page.mjs';
+
 const rem = (px) => `${+(px / 16).toFixed(4)}rem`;
 
 function rgb(hex) {
@@ -249,22 +250,16 @@ export function renderSpecimen(dirs, { product = 'Your product', screen = '' } =
 </div>
 </section>`;
   }).join('\n');
-  return `<title>${esc(product)} directions</title>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="claude:viewport-fit-sides" content="cover">
-${url ? `<link rel="stylesheet" href="${esc(url)}">` : ''}
-<style>
-:root { --page-bg: #f6f6f4; --page-ink: #1c1c1a; --page-muted: #5b5b56; color-scheme: light; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #171716; --page-ink: #ededea; --page-muted: #a9a9a3; color-scheme: dark; } }
-:root[data-theme="dark"] { --page-bg: #171716; --page-ink: #ededea; --page-muted: #a9a9a3; color-scheme: dark; }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--page-bg); color: var(--page-ink); font: 1rem/1.5 system-ui, sans-serif; }
-.intro { padding-block: 32px 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1152px; margin: 0 auto; display: grid; gap: 8px; }
-.intro h1 { margin: 0; font-size: 1.75rem; text-wrap: balance; } .intro p { margin: 0; color: var(--page-muted); max-width: 70ch; }
+  return page({
+    title: `${product} directions`,
+    head: url ? `<link rel="stylesheet" href="${esc(url)}">` : '',
+    base: false,
+    css: `.intro { padding-block: 32px 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1152px; margin: 0 auto; display: grid; gap: 8px; }
+.intro h1 { margin: 0; font-size: 1.75rem; text-wrap: balance; } .intro p { margin: 0; color: var(--muted); max-width: 70ch; }
 ${scoped}
-${SPECIMEN_CSS}
-</style>
-<div class="intro"><h1>${esc(product)}: ${dirs.length} direction${dirs.length === 1 ? '' : 's'}</h1><p>Each direction below is a complete system shown on your first screen and the core components. Pick one, or say what to change ("calmer", "more like the second, warmer"). Nothing is written to your project until you choose.</p>${similar.map((w) => `<p>${esc(w.message)}</p>`).join('')}</div>
-${sections}
-`;
+${SPECIMEN_CSS}`,
+    body: `<div class="intro"><h1>${esc(product)}: ${dirs.length} direction${dirs.length === 1 ? '' : 's'}</h1><p>Each direction below is a complete system shown on your first screen and the core components. Pick one, or say what to change ("calmer", "more like the second, warmer"). Nothing is written to your project until you choose.</p>${similar.map((w) => `<p>${esc(w.message)}</p>`).join('')}</div>
+${sections}`,
+  });
 }
+
