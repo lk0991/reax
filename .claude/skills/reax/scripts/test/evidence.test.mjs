@@ -48,3 +48,31 @@ test('conventions: deviations the review judged explained are not counted again'
   const review = { D: { reviewedAt: '2026-11-23T10:00:00Z', findings: [], explained: ['code.definition'] } };
   assert.deepEqual(conventionsEvidence(root, recorded, ['D'], review).deviations, []);
 });
+
+test('reviewer: its verdict counts only for the exact change it read', async () => {
+  const { reviewerEvidence, diffHash } = await import('../lib/evidence.mjs');
+  const h = diffHash('diff --git a/x b/x\n+1');
+  assert.equal(h, diffHash('diff --git a/x b/x\n+1'));
+  assert.notEqual(h, diffHash('diff --git a/x b/x\n+2'));
+  assert.equal(reviewerEvidence({ diffHash: h, verdict: 'agree', findings: [], summary: 'Fine.' }, h).status, 'pass');
+  const c = reviewerEvidence({ diffHash: h, verdict: 'concerns', findings: [{ what: 'Loading state never announced' }] }, h);
+  assert.equal(c.status, 'pass'); assert.equal(c.verdict, 'concerns');
+  assert.equal(reviewerEvidence({ diffHash: h, verdict: 'blocked', findings: [{ what: 'x' }] }, h).verdict, 'blocked');
+  const stale = reviewerEvidence({ diffHash: h, verdict: 'agree', findings: [] }, diffHash('other'));
+  assert.equal(stale.status, 'not-run'); assert.match(stale.reason, /changed since/);
+  const none = reviewerEvidence(null, h);
+  assert.equal(none.status, 'not-run'); assert.match(none.howTo, /reviewer/);
+  const noAgents = reviewerEvidence({ diffHash: h, status: 'not-run', reason: 'This session cannot start a separate agent.' }, h);
+  assert.equal(noAgents.status, 'not-run'); assert.match(noAgents.reason, /separate agent/);
+});
+
+test('reviewer packet: the diff, the files to read, the evidence and the exact answer format', async () => {
+  const { reviewerPacket } = await import('../lib/evidence.mjs');
+  const p = reviewerPacket({ diff: '+ <button>', hash: 'abc123', files: ['COMPONENTS.md', '.claude/skills/reax/components/button.md'], evidence: 'visual-report/verdict/evidence.json', screenshots: ['visual-report/screenshots/b/mobile-390.png'], out: 'visual-report/verdict/reviewer.json' });
+  assert.match(p, /did not write/i);
+  assert.match(p, /\+ <button>/);
+  assert.match(p, /COMPONENTS\.md/); assert.match(p, /button\.md/); assert.match(p, /mobile-390\.png/);
+  assert.match(p, /"diffHash": "abc123"/);
+  assert.match(p, /"verdict": "agree" \| "concerns" \| "blocked"/);
+  assert.match(p, /visual-report\/verdict\/reviewer\.json/);
+});

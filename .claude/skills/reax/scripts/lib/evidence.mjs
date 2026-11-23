@@ -2,6 +2,7 @@
 // the saved review findings, and the conventions check. Each returns one check for lib/verdict.mjs: pass, fail, or
 // not-run with the reason and what it would take. A check that cannot be trusted (a stale review) is not-run, never pass.
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { readJson, packageManager } from './runtime.mjs';
 import { analyzeComponents, collectFiles, deviations } from './conventions.mjs';
@@ -45,4 +46,52 @@ export function conventionsEvidence(root, recorded, components, review = {}) {
   // a deviation the review judged explained (by COMPONENTS.md's notes, the card or a Requirement) is not counted again
   const explained = (d) => Object.entries(review || {}).some(([k, v]) => k.toLowerCase() === d.component.toLowerCase() && (v.explained || []).includes(d.key));
   return { status: 'pass', deviations: deviations(recorded, now, components).filter((d) => !explained(d)) };
+}
+
+/** A short, stable hash of the change a reviewer read. */
+export const diffHash = (diff) => crypto.createHash('sha1').update(String(diff)).digest('hex').slice(0, 16);
+
+/**
+ * The independent reviewer's saved answer, counted only when it reviewed exactly the current change.
+ * `saved` is what the reviewer wrote: { diffHash, verdict: agree|concerns|blocked, findings, summary }, or
+ * { diffHash, status: 'not-run', reason } when no separate agent could be started.
+ */
+export function reviewerEvidence(saved, hash) {
+  if (!saved) return { status: 'not-run', reason: 'No independent reviewer has read this change.', howTo: 'Start a fresh reviewer agent with the reviewer packet (verdict --packet).' };
+  if (saved.diffHash !== hash) return { status: 'not-run', reason: 'The change has changed since the independent reviewer read it.', howTo: 'Run the reviewer again on the current change.' };
+  if (saved.status === 'not-run') return { status: 'not-run', reason: saved.reason || 'No independent reviewer could run.', howTo: 'Run the verdict in a session that can start a separate agent.' };
+  return { status: 'pass', verdict: ['agree', 'concerns', 'blocked'].includes(saved.verdict) ? saved.verdict : 'concerns', findings: saved.findings || [], summary: saved.summary };
+}
+
+/** The packet a fresh reviewer reads: everything it needs, nothing of the conversation that wrote the code. */
+export function reviewerPacket({ diff, hash, files = [], evidence, screenshots = [], out }) {
+  return `# Review this change
+
+You are an independent reviewer. You did not write this code and you have not seen the conversation that did. Judge it as a senior front-end engineer would before approving a pull request for a design system: correctness, accessibility, behaviour in every state, consistency with the project, and anything a person merging it without reading the code would regret.
+
+Read, in this order:
+${files.map((f) => `- \`${f}\``).join('\n')}
+- \`${evidence}\`: what the automated checks found (type check, lint, visual test, review, conventions, scope)
+${screenshots.length ? `\nLook at these screenshots of the changed stories:\n${screenshots.map((f) => `- \`${f}\``).join('\n')}\n` : ''}
+Do not repeat what the automated checks already report; look for what they cannot see: logic errors, states that are not handled, props that do not do what their names say, focus or announcements that are wrong in use, styles that only work for the example content, changes beyond what the diff needs.
+
+Write your answer as JSON to \`${out}\`, exactly in this shape, and nothing else:
+
+\`\`\`json
+{
+  "diffHash": "${hash}",
+  "verdict": "agree" | "concerns" | "blocked",
+  "summary": "one or two plain sentences a non-developer can read",
+  "findings": [ { "what": "plain-language problem", "where": "path:line", "why": "what goes wrong for a person", "fix": "one line" } ]
+}
+\`\`\`
+
+\`agree\`: you would merge it as it is. \`concerns\`: it works, but something should change first. \`blocked\`: it breaks something for people or for the code. An empty \`findings\` list goes with \`agree\` only.
+
+## The change
+
+\`\`\`diff
+${diff}
+\`\`\`
+`;
 }

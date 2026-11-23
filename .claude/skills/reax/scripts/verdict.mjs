@@ -5,6 +5,8 @@
 //   node verdict.mjs --root <project> [--component Button,Card] [--expect src/styles/tokens.css] [--no-visual]
 //   --component: the components the change is about (default: those changed on this branch or uncommitted)
 //   --expect:    files outside the components the change was meant to touch, so they are not counted as surprises
+//   --packet:    also write visual-report/verdict/review-packet.md for a fresh reviewer agent; it saves its answer to
+//                visual-report/verdict/reviewer.json, which the next verdict reads (only while the change is the same)
 // Exit code: 1 when the verdict is "blocked", otherwise 0. The JSON summary on stdout carries the level.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,7 +17,8 @@ import { changedFiles } from './lib/select.mjs';
 import { mergeConfig } from './lib/capture.mjs';
 import { decide, renderVerdict, dependencyChanges, classifyScope } from './lib/verdict.mjs';
 import { previewReach } from './lib/reach.mjs';
-import { lintCommand, reviewEvidence, conventionsEvidence } from './lib/evidence.mjs';
+import { lintCommand, reviewEvidence, conventionsEvidence, reviewerEvidence, reviewerPacket, diffHash } from './lib/evidence.mjs';
+import { cardFor } from './lib/cards.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -88,15 +91,36 @@ for (const f of scope.changedFiles) {
   try { changedAt[c] = Math.max(changedAt[c] || 0, fs.statSync(path.join(root, f)).mtimeMs); } catch { /* deleted */ }
 }
 
+/* ---------- the change itself, for the independent reviewer ---------- */
+const git = (...a) => spawnSync('git', ['-C', root, ...a], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+const exclude = [':(exclude)visual-report', ':(exclude).reax/baselines'];
+const from = changed.base ? (git('merge-base', changed.base, 'HEAD').stdout.trim() || changed.base) : 'HEAD';
+const untracked = git('ls-files', '--others', '--exclude-standard', '--', '.', ...exclude).stdout.split('\n').filter(Boolean);
+const diff = [git('diff', from, '--', '.', ...exclude).stdout, ...untracked.map((f) => git('diff', '--no-index', '--', '/dev/null', f).stdout)].join('\n').trim();
+const hash = diffHash(diff);
+const reviewerFile = path.join(outDir, 'reviewer.json');
+
 const evidence = { createdAt: new Date().toISOString(), root: path.basename(root), scope, checks: {
   typecheck: typecheck(), lint: lint(), visualTest: visualTest(),
   review: scope.components.length ? reviewEvidence(review, scope.components, changedAt) : { status: 'not-run', reason: 'No component changed.', howTo: 'Name the components with --component.' },
   conventions: conventionsEvidence(root, sidecar.conventions || null, scope.components, review),
-} };
+  reviewer: reviewerEvidence(readJson(reviewerFile, null), hash),
+}, diffHash: hash };
 const v = decide(evidence);
 fs.mkdirSync(outDir, { recursive: true });
 writeJson(path.join(outDir, 'evidence.json'), evidence);
+let packet = null;
+if (args.packet) {
+  // project files by their project path; the skill's own files (cards) by their absolute path
+  const rel = (f) => { const r = path.relative(root, f); return r.startsWith('..') ? path.resolve(f) : r.split(path.sep).join('/'); };
+  const cards = [...new Set(scope.components.map((c) => cardFor(c, sidecar)).filter(Boolean))].map((c) => path.join(HERE, '..', 'components', `${c}.md`));
+  const files = [...['COMPONENTS.md', 'DESIGN.md'].filter((f) => fs.existsSync(path.join(root, f))), ...cards.map((f) => rel(f)), rel(path.join(HERE, '..', 'components', '_rules.md'))];
+  const run = readJson(path.join(root, 'visual-report', 'run.json'), { stories: [] });
+  const shots = run.stories.filter((s) => scope.components.some((c) => c.toLowerCase() === s.title.split('/').pop().trim().toLowerCase())).flatMap((s) => s.captures.filter((c) => c.screenshot && ['mobile-390', 'desktop-1280'].includes(c.viewport)).map((c) => `visual-report/${c.screenshot}`));
+  packet = path.join(outDir, 'review-packet.md');
+  fs.writeFileSync(packet, reviewerPacket({ diff, hash, files, evidence: 'visual-report/verdict/evidence.json', screenshots: shots, out: 'visual-report/verdict/reviewer.json' }));
+}
 fs.writeFileSync(path.join(outDir, 'index.html'), renderVerdict(evidence, v));
 const reach = previewReach();
-console.log(JSON.stringify({ level: v.level, headline: v.headline, page: path.relative(root, path.join(outDir, 'index.html')), evidence: path.relative(root, path.join(outDir, 'evidence.json')), blocking: v.blocking, concerns: v.concerns, gaps: v.gaps.map((g) => g.label), previewReachable: reach.local }, null, 2));
+console.log(JSON.stringify({ level: v.level, headline: v.headline, page: path.relative(root, path.join(outDir, 'index.html')), evidence: path.relative(root, path.join(outDir, 'evidence.json')), ...(packet ? { reviewerPacket: path.relative(root, packet) } : {}), diffHash: hash, blocking: v.blocking, concerns: v.concerns, gaps: v.gaps.map((g) => g.label), previewReachable: reach.local }, null, 2));
 process.exit(v.level === 'blocked' ? 1 : 0);

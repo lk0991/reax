@@ -95,3 +95,11 @@ test('the page shows the level once: as its label, not again at the start of the
   const html = renderVerdict(e, decide(e));
   assert.match(html, /<span class="level">Ready with gaps<\/span><p>Nothing failed/);
 });
+
+test('a reviewer with concerns makes it "needs work"; a blocking reviewer blocks', () => {
+  const a = good(); a.checks.reviewer = { status: 'pass', verdict: 'concerns', findings: [{ what: 'Loading state never announced' }] };
+  assert.equal(decide(a).level, 'needs-work');
+  assert.ok(decide(a).concerns.some((c) => /Loading state/.test(c)));
+  const b = good(); b.checks.reviewer = { status: 'pass', verdict: 'blocked', findings: [{ what: 'Focus lost on close' }] };
+  assert.equal(decide(b).level, 'blocked');
+});
