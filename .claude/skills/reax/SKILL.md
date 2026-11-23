@@ -27,6 +27,7 @@ The first word of the request picks the command. With no command, infer it from 
 | `storybook` | Install and configure Storybook, write missing stories | [reference/storybook.md](reference/storybook.md) |
 | `visual-test` | Run the visual and accessibility tests, review the screenshots, open the preview | [reference/visual-test.md](reference/visual-test.md) |
 | `improve` | Turn the latest run and review findings into a prioritised list | [reference/improve.md](reference/improve.md) |
+| `verdict` | Answer "can this change merge without developer review?" with evidence, in plain words | [reference/verdict.md](reference/verdict.md) |
 
 Read the reference for the command before you act. Do not read the others.
 
@@ -40,6 +41,7 @@ Read the reference for the command before you act. Do not read the others.
 6. **Small, finished output.** A component is a folder (below). Say what you wrote in a few lines. Do not paste the code back.
 7. **Report what ran.** If a check could not run, say that and why. Never describe a result you did not see.
 8. **Ask what the person expects, and end with a preview.** Commands that build a component (`from-text`, `from-figma`) ask once before writing code: one round that covers purpose, variants and states, and a plan naming `init` and every install they will need, approved together. Apart from the `init` diff, nothing else interrupts. They always close by offering a preview. If the person declines the questions, state the defaults and go on.
+9. **End a change with the verdict.** After a command changes components (`from-text`, `from-figma`, an applied Edit or fix), run the [verdict](reference/verdict.md) and report its level in plain words.
 
 ## Component folder
 
@@ -84,6 +86,7 @@ All scripts live in `scripts/`, run with Node 20 or newer, and print JSON or Mar
 - `design.mjs`: `check`, `load`, `tokens`, `write`, `diff`
 - `conventions.mjs`: learns the project's component conventions, for `init`
 - `direction.mjs`: `check`, `specimen`, `commit`, for `direction`
+- `verdict.mjs`: gathers the evidence for a change and writes the quality verdict
 - `setup.mjs`: `--check`, `--install`, `--install-browser`
 - `visual-test.mjs`: the visual test, `--approve`, `--preview`
 - `preview.mjs`: the live preview helper

@@ -56,7 +56,7 @@ Check against `DESIGN.md` and the component's card. Automated overflow checks mi
 
 ## Report to the person
 
-In chat: the counts (failures, warnings, passes), the blocking items in a line each, the path to `visual-report/report.md`, and that the screenshots are there to confirm. Then offer `improve`.
+In chat: the counts (failures, warnings, passes), the blocking items in a line each, the path to `visual-report/report.md`, and that the screenshots are there to confirm. Then offer `improve`. When the run was for a change, follow it with the [verdict](verdict.md).
 
 ## When the person cannot reach this machine
 
