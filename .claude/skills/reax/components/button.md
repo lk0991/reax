@@ -31,13 +31,17 @@ primary, secondary, ghost; danger intent. A link-styled action is still a button
 ## States, mapped to stories
 default, hover, pressed, focus-visible, disabled, loading, icon-only, long label, full width at 390px, danger, 200% text.
 
-## MUST
-- Name from content, or `aria-label` for icon-only.
-- Space and Enter activate. Visible focus ring.
-- Pending: `aria-busy` or a live announcement, focus stays, repeat presses ignored.
-- Toggle buttons use `aria-pressed` with a label that does not change.
-- Target at least 24×24 px (the whole padded box), spaced from neighbours.
-- A disabled button follows the disabled rule in `_rules.md`.
+## Requirements
+- Name from content, or `aria-label` for icon-only (4.1.2, 2.5.3).
+- Space and Enter activate; visible focus (2.1.1, 2.4.7).
+- Pending state is announced: `aria-busy` or a live announcement (4.1.3).
+- A toggle button exposes its state with `aria-pressed` (4.1.2).
+- Target at least 24×24 px, or spaced so a 24px circle does not overlap a neighbour (2.5.8).
+
+## Defaults
+- Focus stays on the button while pending, and repeat presses are ignored.
+- A toggle button's label does not change with its state.
+- A disabled button follows the disabled default in `_rules.md`.
 
 ## Mobile
 Full width is opt-in. Label wraps instead of clipping. Icon-only keeps the 24px floor.

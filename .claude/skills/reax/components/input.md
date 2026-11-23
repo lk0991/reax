@@ -28,13 +28,17 @@ type: text, email, password, number, search, tel, url. Prefix or suffix add-ons.
 ## States, mapped to stories
 default, with hint, focus, filled, error, disabled, read-only, required, long value, long label, narrow width at 320px, 200% text.
 
-## MUST
-- Visible label associated with `for` and `id`. Placeholder is never the label.
-- `aria-invalid="true"` on error; error and hint linked with `aria-describedby`.
+## Requirements
+- Visible label associated with `for` and `id`; a placeholder is never the label (1.3.1, 3.3.2).
+- On error, `aria-invalid="true"`, and the error and hint are linked with `aria-describedby` (3.3.1, 1.3.1).
+- A `pattern` or required format is explained in the hint (3.3.2).
+- Fields for personal data have the right `autoComplete` (1.3.5).
+- Zoom is never suppressed through the viewport (1.4.4).
+
+## Defaults
 - The control fills the field width (`width: 100%; min-width: 0`) so it never overflows a narrow container.
-- Text size at least 1rem. Do not suppress zoom through the viewport.
-- Explain a `pattern` or format in the hint.
-- Do not autofocus on mobile.
+- Text size at least 1rem, so mobile browsers do not zoom on focus.
+- No autofocus on mobile.
 
 ## Mobile
 Right keyboard through `inputMode` and `type`. Control height at least 24px, 44px if `DESIGN.md` says so.

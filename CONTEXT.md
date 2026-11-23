@@ -42,6 +42,10 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Component card**: A short per-component specification the skill loads on demand: anatomy, props, variants, states, accessibility requirements, mobile behaviour and review checks. Both generation and review read the same card.
 
+**Requirement**: An accessibility rule in a component card or the shared rules that comes from WCAG 2.2 AA and cites its success criterion. Nothing overrides it, except an exception a person explicitly accepts in Edit mode, which is recorded.
+
+**Default**: A rule in a component card or the shared rules that is the skill's own choice, not a WCAG success criterion. A request or the project overrides it.
+
 **Default ruling**: The choice the skill applies where authoritative sources disagree. A project can override it, except for accessibility requirements, which always apply.
 
 **Alias map**: The list linking each component's other names (for example Modal, Dialog, Popup) to one canonical name, so a project's own names resolve to the right component card.

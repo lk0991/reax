@@ -24,12 +24,15 @@ Inline in text (always underlined), standalone, with icon.
 ## States, mapped to stories
 default, hover, visited, focus-visible, current page (`aria-current="page"`), external, inside a paragraph, long text that wraps, 200% text.
 
-## MUST
+## Requirements
+- The purpose is clear from the link text, or the text with its context (2.4.4).
+- Inside text, links are distinguishable by more than colour: underlined, or 3:1 against the text plus a non-colour cue on hover and focus (1.4.1).
+- Visible focus; Enter activates (2.4.7, 2.1.1).
+- Standalone links meet the 24px target; links inside a sentence are exempt (2.5.8).
+
+## Defaults
 - Link text makes sense alone ("Read the changelog", not "Click here").
-- Inside text, links are underlined or otherwise 3:1 distinguishable from the text, not by colour alone.
 - `target="_blank"` only with `rel="noopener"`, and the new tab is announced ("opens in a new tab") in the name or visibly.
-- Focus ring visible. Enter activates.
-- Target size: inline links in a sentence are exempt from the 24px floor; standalone links meet it.
 
 ## Mobile
 Standalone links get padding to reach the target size. Long text wraps.
