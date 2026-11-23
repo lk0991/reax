@@ -17,3 +17,6 @@ export const Primary: Story = {};
 export const Secondary: Story = { args: { variant: 'secondary' } };
 export const Loading: Story = { args: { loading: true } };
 export const LongLabel: Story = { args: { children: 'Save all of the changes you made to this very long form' } };
+export const Hover: Story = { tags: ['reax-state-hover'] };
+export const Pressed: Story = { tags: ['reax-state-pressed'] };
+export const FocusVisible: Story = { tags: ['reax-state-focus'] };

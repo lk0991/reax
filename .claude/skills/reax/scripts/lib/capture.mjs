@@ -43,6 +43,27 @@ async function settle(page, quietMs = 200, maxMs = 5000) {
   }), [quietMs, maxMs]);
 }
 
+/** Wait until Storybook reports the story's render, play function included, as finished. Storybook 8 and newer expose
+ * this through the preview's current render; it is not a public API, so a missing field just skips the wait. */
+async function waitForPlay(page, timeout) {
+  await page.waitForFunction(() => {
+    const r = window.__STORYBOOK_PREVIEW__?.currentRender;
+    return !r || !r.phase || ['completed', 'finished', 'errored', 'aborted'].includes(r.phase);
+  }, null, { timeout }).catch(() => { /* a play function that never ends is reported by the screenshot itself */ });
+}
+
+/** Interaction states a story asks for with a tag (reax-state-hover, -pressed, -focus). */
+export const STATE_TAGS = { 'reax-state-hover': 'hover', 'reax-state-pressed': 'pressed', 'reax-state-focus': 'focus' };
+const TARGET = '[data-reax-target], #storybook-root button, #storybook-root a[href], #storybook-root input, #storybook-root select, #storybook-root textarea, #storybook-root summary, #storybook-root [tabindex]:not([tabindex="-1"])';
+
+/** Put the story's target element into the state with real pointer and keyboard input, so CSS pseudo-classes apply. */
+async function enterState(page, state) {
+  const target = page.locator(TARGET).first();
+  if (state === 'hover') await target.hover();
+  if (state === 'pressed') { await target.hover(); await page.mouse.down(); }
+  if (state === 'focus') { await page.keyboard.press('Shift'); await target.focus(); }
+}
+
 /** Font size of every element that carries its own text, with a short selector. */
 const measureText = (page) => page.evaluate(() => {
   const root = document.querySelector('#storybook-root') || document.body; const out = [];
@@ -67,6 +88,7 @@ export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder 
       const msg = await page.evaluate(() => (document.querySelector('.sb-errordisplay_main, #error-message') || document.body).innerText.slice(0, 600));
       throw Object.assign(new Error(msg.trim() || 'The story threw while rendering.'), { storyError: true });
     }
+    await waitForPlay(page, config.storyTimeoutMs);
     await page.addStyleTag({ content: ANIM_OFF });
     await settle(page);
 
@@ -77,6 +99,10 @@ export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder 
       const after = await measureText(page);
       before.forEach((b, i) => { const a = after[i]; if (!a || a.selector !== b.selector) return; const ratio = a.size / b.size; if (ratio < vp.textScale * 0.75) result.textScale.push({ selector: b.selector, text: b.text, before: b.size, after: a.size, ratio: Math.round(ratio * 100) / 100 }); });
     }
+
+    // the interaction state goes last, after any text-size change, so the pointer is still over its target
+    const state = (story.tags || []).map((t) => STATE_TAGS[t]).find(Boolean);
+    if (state) { await enterState(page, state); await settle(page); }
 
     // a screenshot must match itself before it is believed; otherwise the capture is reported as unstable
     let shot; let stable = false;

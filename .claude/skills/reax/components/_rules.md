@@ -47,6 +47,13 @@ Request, then project (`DESIGN.md`, existing components, token files), then card
 
 One story per state the card lists, a long-text story, and a story at the narrow width if the layout changes. Stories carry the arguments of the state, not a hard-coded copy of the markup.
 
+Interaction states cannot be set with arguments. Give those stories a tag, and the visual test puts the element into the state with real pointer and keyboard input before the screenshot, so `:hover`, `:active` and `:focus-visible` styles show:
+
+- `tags: ['reax-state-hover']`, `['reax-state-pressed']` or `['reax-state-focus']`.
+- The target is the first interactive element in the story, or the element marked `data-reax-target` (for example the trigger, not the first item, in a compound story).
+- Other states that need interaction (an open menu, a filled form) use a `play` function. The capture waits for it to finish.
+- A story for 200% text or a narrow width is not needed: every story is captured at 320px and at 200% text.
+
 ## Review checks for any component
 
 1. Missing accessible name. 2. Target under 24px. 3. Raw value where a token exists. 4. Fixed width or `px` text. 5. No visible focus. 6. State not exposed to assistive technology. 7. A state with no story. 8. No `data-slot` on a part.
