@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs, req, chromiumPath, findUp, readJson, writeJson } from './lib/runtime.mjs';
 import { mergeConfig } from './lib/capture.mjs';
 import { selectStories } from './lib/select.mjs';
+import { previewReach } from './lib/reach.mjs';
 import { storybookInfo, startDev, readIndex, freePort, lastLines, stopTree, storybookCommand } from './lib/storybook.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -191,7 +192,9 @@ server.on('upgrade', (rq, socket, head) => {
 const port = args.port ? Number(args.port) : await freePort();
 await new Promise((r) => server.listen(port, '127.0.0.1', r));
 const url = `http://127.0.0.1:${port}/__reax/?token=${token}`;
-emit({ event: 'ready', url, storybook: `http://127.0.0.1:${port}/`, stories: index.stories.length, initial });
+const reach = previewReach();
+emit({ event: 'ready', url, storybook: `http://127.0.0.1:${port}/`, stories: index.stories.length, initial, reachable: reach.local, ...(reach.local ? {} : { reason: reach.reason }) });
+if (!reach.local) log(`The person's browser probably cannot open this address: ${reach.reason}. Publish a static preview instead (visual-test --static).`);
 log(`reax preview: ${url}`);
 
 let closing = false;

@@ -7,6 +7,8 @@
 //   node visual-test.mjs --all                 run every story
 //   node visual-test.mjs --approve [all|id|Component]   approve the last run's captures as baselines
 //   node visual-test.mjs --preview [--component X]      open the live preview instead of running
+//   node visual-test.mjs --static                       build Storybook into visual-report/static-preview/ for publishing
+//                                                       when the person cannot reach this machine (no tests run)
 //   options: --root <dir>  --force (with --approve)
 //
 // Exit code: 0 when nothing blocks; 1 for axe serious/critical findings, a story that could not run, or a failed run.
@@ -20,6 +22,7 @@ import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
 import { selectStories as select } from './lib/select.mjs';
 import { storybookInfo, buildStatic, serveStatic, readIndex, storybookCommand } from './lib/storybook.mjs';
+import { previewReach } from './lib/reach.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -33,6 +36,8 @@ try { config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json')
 /* widths pinned in the live preview become extra captures */
 for (const w of readJson(path.join(root, '.reax', 'viewports.json'), [])) if (Number.isInteger(w) && !config.viewports.some((v) => v.width === w && !v.textScale)) config.viewports.push({ name: `pinned-${w}`, width: w, height: 844 });
 const reportDir = path.join(root, 'visual-report');
+// what one publish of a page and its files may hold (the Artifact tool's limits)
+const PUBLISH_LIMITS = { files: 255, bytes: 64 * 1024 * 1024, fileBytes: 15 * 1024 * 1024 };
 const baselineDir = path.join(root, '.reax', 'baselines');
 
 /* ---------- --preview hands off to the preview helper ---------- */
@@ -42,10 +47,29 @@ if (args.preview) {
   const fwd = process.argv.slice(2).filter((a) => a !== '--preview');
   const child = spawn(process.execPath, [script, ...fwd], { stdio: 'inherit' });
   child.on('exit', (code) => process.exit(code ?? 0));
+} else if (args.static) {
+  await staticPreview();
 } else if (args.approve !== undefined) {
   approve();
 } else {
   await run();
+}
+
+/* ---------- a static Storybook to publish, for a person who cannot reach this machine ---------- */
+async function staticPreview() {
+  const sb = storybookInfo(root);
+  if (!sb.configDir || !sb.installed) fail('No installed Storybook in this project. Run the storybook command first.');
+  let built;
+  try { built = await buildStatic(root, { command: storybookCommand(root, config), log }); } catch (e) { fail(e.message, { output: e.output }); }
+  const dest = path.join(reportDir, 'static-preview');
+  fs.rmSync(dest, { recursive: true, force: true }); fs.cpSync(built.outDir, dest, { recursive: true });
+  const files = []; const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else files.push({ path: path.relative(dest, p).split(path.sep).join('/'), bytes: fs.statSync(p).size }); } };
+  walk(dest);
+  const bytes = files.reduce((n, f) => n + f.bytes, 0);
+  const tooBig = files.filter((f) => f.bytes > PUBLISH_LIMITS.fileBytes).map((f) => f.path);
+  const fits = files.length <= PUBLISH_LIMITS.files && bytes <= PUBLISH_LIMITS.bytes && !tooBig.length;
+  console.log(JSON.stringify({ ok: true, dir: path.relative(root, dest), page: 'index.html', files: files.map((f) => f.path).filter((f) => f !== 'index.html'), count: files.length, bytes, fits, ...(tooBig.length ? { tooBig } : {}), reach: previewReach() }, null, 2));
+  process.exit(0);
 }
 
 /* ---------- approve ---------- */
