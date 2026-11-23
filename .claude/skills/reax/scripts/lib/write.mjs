@@ -65,7 +65,7 @@ export function composeDesignMarkdown(draft, existing = null) {
 export function composeSidecar(root, draft) {
   const scan = { ...(draft.scan || {}), scannedAt: new Date().toISOString() };
   scan.hashes = currentHashes(root, scan); scan.hashVersion = HASH_VERSION;
-  return { schemaVersion: 1, scan, ...(draft.components ? { conventions: draft.components.conventions } : {}), tokenSources: draft.sidecar?.tokenSources || {}, language: draft.sidecar?.language || {}, inventory: draft.sidecar?.inventory || [], shadows: draft.sidecar?.shadows || {}, themes: draft.sidecar?.themes || [] };
+  return { schemaVersion: 1, scan, ...(draft.components ? { conventions: draft.components.conventions } : {}), ...(draft.sidecar?.direction ? { direction: draft.sidecar.direction } : {}), tokenSources: draft.sidecar?.tokenSources || {}, language: draft.sidecar?.language || {}, inventory: draft.sidecar?.inventory || [], shadows: draft.sidecar?.shadows || {}, themes: draft.sidecar?.themes || [] };
 }
 
 /** Compute what would be written, as a diff against what exists. Writes only when `apply` is true. */

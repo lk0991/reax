@@ -12,6 +12,12 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Component convention**: One way the project's components are written, such as `forwardRef` or a `data-variant` attribute, counted across all components. About 70% or more makes it the convention; a closer split is mixed, and `init` asks about it or recommends the newest pattern.
 
+**Direction**: A complete look proposed for a project with no design system: one idea from the users' own world, decided as colour, type, spacing and density, and shape and depth, with the use scene that set light or dark. The `direction` command shows three, the person picks one, and it becomes the project's token file and DESIGN.md.
+
+**Specimen**: The page that shows directions side by side, each on the person's first screen and the core components, with palette, type, space and shape. It has no scripts and is published as a private Artifact when the person cannot open local files.
+
+**PRODUCT.md**: A markdown file at the project root recording confirmed product truth: who uses the product, in what situation, what it is for, what makes it different, and binding brand commitments. Written by `direction`, in the format the impeccable skill also reads.
+
 **Design sidecar**: The file `.reax/design.json` beside `DESIGN.md`, holding the data the open format cannot: the source file and real name of each token, the component conventions behind `COMPONENTS.md`, the component inventory with each component's other names, the language fields, shadows, and the scan stamps used to tell when the two files have drifted from the project.
 
 **Fallback scale**: The set of tokens `init` proposes when a project has none for a group, named with the open format's recommended names. It is marked proposed and written to the project only after the person confirms.

@@ -1,9 +1,9 @@
 ---
 name: reax
-description: Generate, review and visually test React UI components that follow the project's own design system. Use when asked to build a React component from a text description or a Figma or image design, to review a project's React components against its design system and WCAG (not general page or design audits), to set up Storybook, to run visual and accessibility tests with screenshots, or to open a live preview where a person can try a component, comment on elements and edit tokens. Also use to create or refresh DESIGN.md.
+description: Generate, review and visually test React UI components that follow the project's own design system, or give a project without one a look of its own. Use when asked to build a React component from a text description or a Figma or image design, to review a project's React components against its design system and WCAG (not general page or design audits), to set up Storybook, to run visual and accessibility tests with screenshots, or to open a live preview where a person can try a component, comment on elements and edit tokens. Also use to create or refresh DESIGN.md, or to choose a visual direction (a look of its own, not a generic default) for a project that has no design system yet.
 version: 0.1.0
 user-invocable: true
-argument-hint: "[init|from-figma|from-text|review|storybook|visual-test|improve] [details]"
+argument-hint: "[direction|init|from-figma|from-text|review|storybook|visual-test|improve] [details]"
 license: MIT
 ---
 
@@ -19,6 +19,7 @@ The first word of the request picks the command. With no command, infer it from 
 
 | Command | Use it to | Read |
 | --- | --- | --- |
+| `direction` | Give a project with no design system a look of its own: product questions, three directions on a specimen page, then the token file and `DESIGN.md` | [reference/direction.md](reference/direction.md) |
 | `init` | Scan the project and write `DESIGN.md`, `COMPONENTS.md` and `.reax/design.json` | [reference/init.md](reference/init.md) |
 | `from-text` | Build a component from a text description | [reference/from-text.md](reference/from-text.md) |
 | `from-figma` | Build a component from an image, screenshot or Figma link | [reference/from-figma.md](reference/from-figma.md) |
@@ -31,7 +32,7 @@ Read the reference for the command before you act. Do not read the others.
 
 ## Rules that hold in every command
 
-1. **Load the design first.** Before creating or reviewing anything, run `node scripts/design.mjs check --root <project>` (paths below are relative to this skill's folder). Exit 0: run `load` and use it, and read `COMPONENTS.md` if it exists before writing a component or a story. Missing: offer `init` (in `from-text` and `from-figma`, as part of the one plan they ask for), and carry on with the card defaults only if the person declines. Stale: say what drifted and offer `init`. Never refresh silently.
+1. **Load the design first.** Before creating or reviewing anything, run `node scripts/design.mjs check --root <project>` (paths below are relative to this skill's folder). Exit 0: run `load` and use it, and read `COMPONENTS.md` if it exists before writing a component or a story. Missing: offer `init` (in `from-text` and `from-figma`, as part of the one plan they ask for). When the project has no tokens at all, offer `direction` instead: a component built on generic defaults looks generic. Carry on with the card defaults only if the person declines both. Stale: say what drifted and offer `init`. Never refresh silently.
 2. **Precedence.** The request wins, then the project (`DESIGN.md`, `COMPONENTS.md`, its existing components and token files), then the card and shared defaults. Accessibility requirements (the Requirements lists in the cards and [components/_rules.md](components/_rules.md), each citing its WCAG success criterion) apply whatever the order says. Defaults are overridable. If a request conflicts with one, do the accessible thing and say so in one line. A chat request never overrides one; only an exception accepted in Edit mode does.
 3. **Ask before installing** anything into the project. Say which packages and why, then wait (in a build command, the one plan is that question). Skill dependencies (Playwright, axe, pixelmatch) install into `~/.cache/reax`, not the project: run `node scripts/setup.mjs --check --root <project>`, and `--install` only after the person agrees.
 4. **Never edit an existing component unprompted.** `review` reports and saves its findings, `improve` lists. A person asks for the change, or approves it in the preview's Edit mode.
@@ -67,6 +68,7 @@ Every part of a component carries `data-slot="name"`, using the slot names from 
 
 | Path | What | Commit it? |
 | --- | --- | --- |
+| `PRODUCT.md` | Who the product is for, its situation and commitments (written by `direction`; the impeccable skill reads it too) | yes |
 | `DESIGN.md` | Design tokens and language, open DESIGN.md format | yes |
 | `COMPONENTS.md` | How components are written here: layout, names, declarations, styling, props, stories | yes |
 | `.reax/design.json` | Machine data beside them | yes |
@@ -81,6 +83,7 @@ All scripts live in `scripts/`, run with Node 20 or newer, and print JSON or Mar
 
 - `design.mjs`: `check`, `load`, `tokens`, `write`, `diff`
 - `conventions.mjs`: learns the project's component conventions, for `init`
+- `direction.mjs`: `check`, `specimen`, `commit`, for `direction`
 - `setup.mjs`: `--check`, `--install`, `--install-browser`
 - `visual-test.mjs`: the visual test, `--approve`, `--preview`
 - `preview.mjs`: the live preview helper
