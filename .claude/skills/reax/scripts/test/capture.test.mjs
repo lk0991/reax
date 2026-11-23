@@ -55,3 +55,17 @@ test('a capture waits for the story\'s play function to finish', { skip }, async
     assert.ok(!played.equals(plain), 'the screenshot shows the DOM after the play function');
   } finally { await close(); }
 });
+
+test('200% text doubles the project\'s own root size instead of replacing it', { skip }, async () => {
+  const { scaleRootText } = await import('../lib/capture.mjs');
+  const { chromium: pw } = req('playwright');
+  const browser = await pw.launch({ executablePath: chromium, args: ['--no-sandbox'] });
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<style>html{font-size:62.5%}</style><p>x</p>');
+    await scaleRootText(page, 2);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), '20px');
+    await scaleRootText(page, 2); // applying it twice does not compound
+    assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), '20px');
+  } finally { await browser.close(); }
+});

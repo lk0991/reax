@@ -65,6 +65,15 @@ async function enterState(page, state) {
   if (state === 'focus') { await page.keyboard.press('Shift'); await target.focus(); }
 }
 
+/** The page-side rule for larger text, shared with the preview: multiply the project's own root font size, the way a
+ * browser's text-size setting does, instead of replacing it (a root of 62.5% becomes 125%, not 200%). */
+export const SCALE_ROOT_TEXT = (s) => {
+  const root = document.documentElement;
+  if (root.dataset.reaxBaseFont === undefined) { root.style.fontSize = ''; root.dataset.reaxBaseFont = getComputedStyle(root).fontSize; }
+  root.style.fontSize = s === 1 ? '' : `${parseFloat(root.dataset.reaxBaseFont) * s}px`;
+};
+export const scaleRootText = (page, s) => page.evaluate(SCALE_ROOT_TEXT, s);
+
 /** Font size of every element that carries its own text, with a short selector. */
 const measureText = (page) => page.evaluate(() => {
   const root = document.querySelector('#storybook-root') || document.body; const out = [];
@@ -114,7 +123,7 @@ export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder 
 
     if (vp.textScale) {
       const before = await measureText(page);
-      await page.evaluate((s) => { document.documentElement.style.fontSize = `${s * 100}%`; }, vp.textScale);
+      await scaleRootText(page, vp.textScale);
       await settle(page);
       const after = await measureText(page);
       before.forEach((b, i) => { const a = after[i]; if (!a || a.selector !== b.selector) return; const ratio = a.size / b.size; if (ratio < vp.textScale * 0.75) result.textScale.push({ selector: b.selector, text: b.text, before: b.size, after: a.size, ratio: Math.round(ratio * 100) / 100 }); });

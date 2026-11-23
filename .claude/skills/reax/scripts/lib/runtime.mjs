@@ -6,6 +6,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 export const CACHE = process.env.REAX_HOME || path.join(os.homedir(), '.cache', 'reax');
 
@@ -28,7 +31,7 @@ export function req(name, projectRoot = process.cwd()) {
   for (const r of roots) {
     try { return createRequire(r)(name); } catch (e) { lastError = e; }
   }
-  const err = new Error(`Dependency "${name}" is not installed. Run: node ${path.join(import.meta.dirname, '..', 'setup.mjs')} --install`);
+  const err = new Error(`Dependency "${name}" is not installed. Run: node ${path.join(HERE, '..', 'setup.mjs')} --install`);
   err.code = 'REAX_MISSING_DEP'; err.cause = lastError;
   throw err;
 }

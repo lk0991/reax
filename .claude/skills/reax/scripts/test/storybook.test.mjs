@@ -40,3 +40,14 @@ test('without a resolvable binary, it falls back to the package manager\'s exec,
 test('the old buildCommand setting is refused with a clear message', () => {
   assert.throws(() => mergeConfig({ storybook: { buildCommand: 'npm run build-storybook' } }), /storybook\.command/);
 });
+
+test('the static server answers a malformed or escaping path without crashing', async () => {
+  const { serveStatic } = await import('../lib/storybook.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reax-srv-')); fs.writeFileSync(path.join(dir, 'index.html'), 'ok');
+  const s = await serveStatic(dir);
+  try {
+    assert.equal((await fetch(`${s.url}/%E0%A4%A`)).status, 400);
+    assert.equal((await fetch(`${s.url}/..%2f..%2fetc%2fpasswd`)).status, 403);
+    assert.equal(await (await fetch(`${s.url}/`)).text(), 'ok');
+  } finally { await s.close(); }
+});

@@ -19,7 +19,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, req, chromiumPath, findUp, readJson, writeJson } from './lib/runtime.mjs';
-import { mergeConfig } from './lib/capture.mjs';
+import { mergeConfig, scaleRootText } from './lib/capture.mjs';
 import { selectStories } from './lib/select.mjs';
 import { previewReach } from './lib/reach.mjs';
 import { storybookInfo, startDev, readIndex, freePort, lastLines, stopTree, storybookCommand } from './lib/storybook.mjs';
@@ -87,16 +87,24 @@ async function browser() {
   })();
   return browserPromise;
 }
+/* Storybook's URL form of args (key:value;key:value), for the simple values it accepts. Other args (objects, functions,
+   free text with punctuation) cannot travel in a URL, and the crop then shows the story's own value for them. */
+function argsParam(args) {
+  if (!args || typeof args !== 'object') return '';
+  const parts = Object.entries(args).filter(([k, v]) => /^[\w-]+$/.test(k) && (typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && /^[\w -]*$/.test(v) && v.length < 80)))
+    .map(([k, v]) => `${k}:${typeof v === 'boolean' ? `!${v}` : v}`);
+  return parts.length ? `&args=${encodeURIComponent(parts.join(';'))}` : '';
+}
 async function crop(c) {
   try {
     const m = String(c.selector).match(/^\[data-slot="(.+?)"\](?::nth\((\d+)\))?$/); if (!m) return null;
     const b = await browser();
-    const ctx = await b.newContext({ viewport: { width: c.viewport || 390, height: 800 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
+    const ctx = await b.newContext({ viewport: { width: c.viewport || 390, height: c.height || 800 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
     try {
       const page = await ctx.newPage();
-      await page.goto(`${storybook.url}/iframe.html?id=${encodeURIComponent(c.story)}&viewMode=story`, { timeout: 20_000 });
+      await page.goto(`${storybook.url}/iframe.html?id=${encodeURIComponent(c.story)}&viewMode=story${argsParam(c.args)}`, { timeout: 20_000 });
       await page.waitForFunction(() => document.body.classList.contains('sb-show-main'), null, { timeout: 20_000 });
-      if (c.textScale === 200) await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+      if (c.textScale === 200) await scaleRootText(page, 2);
       await page.waitForTimeout(300);
       const rel = path.posix.join('visual-report', 'comments', `${c.id}.png`);
       fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });

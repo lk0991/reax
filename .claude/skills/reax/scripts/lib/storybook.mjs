@@ -37,14 +37,15 @@ export function storybookInfo(root) {
 }
 
 const IGNORE = new Set(['node_modules', '.git', 'storybook-static', 'visual-report', '.reax', 'dist', 'build', 'coverage']);
-const SOURCE = /\.(tsx?|jsx?|css|scss|json|mdx|html|svg)$/;
+const SOURCE = /\.(tsx?|jsx?|mjs|cjs|css|scss|sass|less|json|mdx?|html|svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|mp4|webm)$/i;
 
 /** A hash of the files a Storybook build depends on, so a build is repeated only when something changed. */
 export function sourceHash(root) {
   const files = [];
-  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (IGNORE.has(e.name)) continue; const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (SOURCE.test(e.name) || ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'].includes(e.name)) { try { if (fs.statSync(p).size < 1_000_000) files.push(p); } catch { /* unreadable: skip */ } } } };
+  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (IGNORE.has(e.name)) continue; const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (SOURCE.test(e.name) || ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'].includes(e.name)) { try { fs.statSync(p); files.push(p); } catch { /* unreadable: skip */ } } } };
   walk(root);
-  const h = sha1(''); const parts = files.sort().map((f) => `${path.relative(root, f)}:${sha1(fs.readFileSync(f))}`);
+  const h = sha1(''); // large files (images, video, fonts) count by size and modification time, so hashing stays quick
+  const parts = files.sort().map((f) => { const st = fs.statSync(f); return `${path.relative(root, f)}:${st.size > 1_000_000 ? `${st.size}-${st.mtimeMs}` : sha1(fs.readFileSync(f))}`; });
   return sha1(h + parts.join('\n'));
 }
 
@@ -71,8 +72,9 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 /** Serve a static folder on 127.0.0.1 and a free port. */
 export function serveStatic(dir) {
   const server = http.createServer((req, res) => {
-    const u = new URL(req.url, 'http://x'); let p = path.join(dir, decodeURIComponent(u.pathname));
-    if (!p.startsWith(dir)) { res.writeHead(403); return res.end(); }
+    let p;
+    try { p = path.join(dir, decodeURIComponent(new URL(req.url, 'http://x').pathname)); } catch { res.writeHead(400); return res.end('bad request'); }
+    if (p !== dir && !p.startsWith(dir + path.sep)) { res.writeHead(403); return res.end(); }
     if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
     if (!fs.existsSync(p)) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' });
