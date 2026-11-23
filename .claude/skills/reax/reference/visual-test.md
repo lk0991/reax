@@ -14,11 +14,32 @@ Run the visual and accessibility tests on Storybook stories, review the screensh
 node scripts/visual-test.mjs --root <project> [--component Button,Input | --all]
 ```
 
-By default it tests the components changed on this branch since it left the base branch (the remote's default branch, or `main` or `master`; set `baseBranch` in `.reax/visual-test.json` to choose), plus uncommitted changes. With no base branch it uses uncommitted changes only and says so. `--component` names them, `--all` runs every story, a story tagged `reax-skip` is left out. It builds Storybook statically into a temp folder (rebuilding only when sources changed), takes four captures per story (390×844, 1280×800, 320px reflow, 390 wide with 200% text), runs axe on each, and compares with baselines in `.reax/baselines/`. Widths pinned in the preview are added. Optional settings are in `.reax/visual-test.json`.
+By default it tests the components changed on this branch since it left the base branch (the remote's default branch, or `main` or `master`; set `baseBranch` in `.reax/visual-test.json` to choose), plus uncommitted changes. With no base branch it uses uncommitted changes only and says so. `--component` names them, `--all` runs every story, a story tagged `reax-skip` is left out. It builds Storybook statically into a temp folder (rebuilding only when sources changed), takes four captures per story (390×844, 1280×800, 320px reflow, 390 wide with 200% text), runs axe on each, and compares with baselines in `.reax/baselines/`. Widths pinned in the preview are added. Optional settings are in `.reax/visual-test.json` (below).
 
 The script prints a JSON summary and writes `visual-report/report.md` and `run.json`. Exit code 1 means blocking axe findings (serious, critical), a story that could not run, or a failed run. Warnings (sideways scroll, text that ignores 200%, a baseline diff over 0.1%, an unstable capture) do not fail the run. A first run with no baselines fails nothing. A run whose scope has no stories prints `"result": "nothing-tested"`: report that nothing was tested, never that it passed, and offer `--all` or `--component`.
 
 If the run could not start (build failed, no stories), report Storybook's last lines. Do not retry in a loop.
+
+### Settings
+
+`.reax/visual-test.json` is optional. Every key is optional and falls back to its default. The preview reads the same file.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `viewports` | 390×844, 1280×800, 320×640, 390×844 at 200% text | The captures per story: `{ name, width, height, textScale? }`. Replacing it drops the defaults. |
+| `diffThreshold` | `0.001` | Share of pixels that may differ from the baseline before a capture counts as changed. |
+| `axe.tags` | `wcag2a`, `wcag2aa`, `wcag22aa`, `best-practice` | The axe-core rule tags to run. |
+| `axe.disabledRules` | none | Rules switched off: `[{ id, reason }]`. The reason is printed in the report. |
+| `axe.blockingImpacts` | `serious`, `critical` | Impacts that fail the run. |
+| `skipTag` | `reax-skip` | Stories with this tag are left out. |
+| `baseBranch` | the remote's default, else `main` or `master` | The branch the default scope compares with. |
+| `concurrency` | `4` | Captures taken in parallel. |
+| `storyTimeoutMs` | `30000` | How long a story may take to render. |
+| `stabilityAttempts` | `3` | Tries for a screenshot that matches itself. |
+| `storybook.command` | the installed Storybook binary, run with Node | The command that runs the Storybook CLI, without a subcommand (for example `pnpm exec storybook`). The scripts add `build` or `dev`. Set it only when the binary cannot be found (Yarn Plug'n'Play). The old `storybook.buildCommand` is refused. |
+| `preview.startTimeoutMs` | `90000` | How long the preview waits for `storybook dev`. |
+
+The scripts never run a package.json script named `storybook`, so it does not matter what that script does.
 
 ## Visual review (you)
 

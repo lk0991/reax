@@ -19,7 +19,7 @@ import { mergeConfig, capture } from './lib/capture.mjs';
 import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
 import { selectStories as select } from './lib/select.mjs';
-import { storybookInfo, buildStatic, serveStatic, readIndex } from './lib/storybook.mjs';
+import { storybookInfo, buildStatic, serveStatic, readIndex, storybookCommand } from './lib/storybook.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -28,7 +28,8 @@ const root = findUp(startDir, ['package.json']) || startDir;
 const log = (m) => console.error(m);
 const fail = (message, extra = {}) => { console.log(JSON.stringify({ ok: false, error: message, ...extra }, null, 2)); process.exit(1); };
 
-const config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {}));
+let config;
+try { config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {})); } catch (e) { fail(e.message); }
 /* widths pinned in the live preview become extra captures */
 for (const w of readJson(path.join(root, '.reax', 'viewports.json'), [])) if (Number.isInteger(w) && !config.viewports.some((v) => v.width === w && !v.textScale)) config.viewports.push({ name: `pinned-${w}`, width: w, height: 844 });
 const reportDir = path.join(root, 'visual-report');
@@ -80,7 +81,7 @@ async function run() {
   if (sb.bestEffort) log('Storybook 7 is supported on a best-effort basis.');
 
   let built;
-  try { built = await buildStatic(root, { command: config.storybook.buildCommand, log }); } catch (e) { fail(e.message, { output: e.output }); }
+  try { built = await buildStatic(root, { command: storybookCommand(root, config), log }); } catch (e) { fail(e.message, { output: e.output }); }
   const server = await serveStatic(built.outDir);
   let index;
   try { index = await readIndex(server.url); } catch (e) { await server.close(); fail(`Could not read Storybook's story list: ${e.message}`); }

@@ -16,7 +16,7 @@ export const DEFAULTS = {
   concurrency: 4,
   storyTimeoutMs: 30_000,
   stabilityAttempts: 3,
-  storybook: { buildCommand: null },
+  storybook: { command: null },
   preview: { startTimeoutMs: 90_000 },
 };
 
@@ -24,6 +24,7 @@ const ANIM_OFF = '*,*::before,*::after{animation:none!important;transition:none!
 
 /** Merge a project's config over the defaults, one level deep. */
 export function mergeConfig(user = {}) {
+  if (user.storybook && 'buildCommand' in user.storybook) throw new Error('.reax/visual-test.json: "storybook.buildCommand" is now "storybook.command". It is the command that runs the Storybook CLI without a subcommand, for example "pnpm exec storybook", not a build script.');
   const out = { ...DEFAULTS, ...user };
   for (const k of ['axe', 'storybook', 'preview']) out[k] = { ...DEFAULTS[k], ...(user[k] || {}) };
   return out;

@@ -19,16 +19,17 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs, req, chromiumPath, findUp, readJson, writeJson } from './lib/runtime.mjs';
 import { mergeConfig } from './lib/capture.mjs';
 import { selectStories } from './lib/select.mjs';
-import { storybookInfo, startDev, readIndex, freePort, lastLines, stopTree } from './lib/storybook.mjs';
+import { storybookInfo, startDev, readIndex, freePort, lastLines, stopTree, storybookCommand } from './lib/storybook.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
 const root = findUp(path.resolve(args.root || process.cwd()), ['package.json']) || path.resolve(args.root || process.cwd());
-const config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {}));
 const outDir = path.join(root, 'visual-report');
 const log = (m) => console.error(m);
 const emit = (o) => console.log(JSON.stringify(o));
 const die = (message, output) => { emit({ event: 'error', message, ...(output ? { output } : {}) }); if (output) log(output); process.exit(1); };
+let config;
+try { config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {})); } catch (e) { die(e.message); }
 
 /* ---------- Storybook: reuse or start ---------- */
 let sb; let storybook;
@@ -41,7 +42,7 @@ try {
     if (!info.configDir) die('This project has no .storybook folder. Run the `storybook` command of the skill first.');
     if (!info.installed) die('Storybook is not installed in this project. Install it first (the `storybook` command of the skill does this).');
     if (info.supported === false) die(`Storybook ${info.version} is too old. The preview needs Storybook 8 or newer.`);
-    storybook = await startDev(root, { command: config.storybook.buildCommand, startTimeoutMs: config.preview.startTimeoutMs, log });
+    storybook = await startDev(root, { command: storybookCommand(root, config), startTimeoutMs: config.preview.startTimeoutMs, log });
   }
 } catch (e) {
   die(e.message, e.output ? lastLines(e.output, 20) : undefined);
