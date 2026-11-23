@@ -58,6 +58,15 @@ Check against `DESIGN.md` and the component's card. Automated overflow checks mi
 
 In chat: the counts (failures, warnings, passes), the blocking items in a line each, the path to `visual-report/report.md`, and that the screenshots are there to confirm. Then offer `improve`.
 
+## When the person cannot reach this machine
+
+The live preview is on 127.0.0.1. In a cloud or remote session (the run's summary has `previewReachable: false` with the reason; the preview's `ready` line has `reachable: false`), the person's browser cannot open it. Do not offer its URL as if it works. Instead:
+
+1. **Publish the screenshot gallery** (the default). Every run writes `visual-report/gallery.html`: each story's captures and its result. You must look at every screenshot for the visual review anyway; that also covers reading them before publishing. Publish it as a private Artifact: `file_path` is the gallery, and `files` maps each path the summary's gallery `files` count refers to (`screenshots/<story-id>/<viewport>.png`) to the file under `visual-report/`. If `fits` is false (more than 254 screenshots), run again with `--component` for fewer stories. Publishing to the same `file_path` again keeps the link.
+2. **Offer a deployed Storybook** for trying the components by hand, only if the person uses a host and agrees: `visual-test --static` builds Storybook into `visual-report/static-preview/` (no tests run). Deploy that folder with the person's own host CLI (for example `vercel deploy visual-report/static-preview`); ask first, since it puts their components on the internet behind their host's access settings.
+
+Neither has the Comment, Anatomy or Edit modes: those need the live preview. Say so in one line, and take comments in chat instead. If neither is possible, say why in one line and describe the screenshots in chat.
+
 ## Baselines
 
 Baselines are approved by a person, after the visual review passes:

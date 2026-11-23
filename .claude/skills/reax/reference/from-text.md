@@ -22,8 +22,9 @@ Build a component from a plain-text description.
 6. **Type-check** the files if the project has `tsc` set up (`npx tsc --noEmit -p .`). Fix what you caused.
 7. **If Storybook was not approved**, say once that there are no stories to render or test until it is, and that the `storybook` command adds it.
 8. **Always close by offering a preview.** Never end with only "run visual-test later". Offer, with a recommendation:
-   - the live preview via `visual-test` when the project can run Storybook (installs need approval, rule 3);
-   - otherwise a static HTML preview showing every state at 390px and at desktop width, which needs no installs.
+   - the live preview via `visual-test` when the project can run Storybook and the person can reach this machine;
+   - in a cloud or remote session, the published screenshot gallery, and optionally a deployed Storybook ([visual-test](visual-test.md), "When the person cannot reach this machine");
+   - without Storybook, no preview: say so and offer the `storybook` command.
    Run the one the person picks. If none is possible, say why in one line.
 
 ## Output to the person

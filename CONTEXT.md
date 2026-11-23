@@ -30,6 +30,8 @@ A repository that ships an agent skill for generating, reviewing, and visually t
 
 **Preview**: The local live page, opened from the visual test, where a person uses a built component by hand. It has four modes (test, comment, anatomy, edit), a resizable frame, and a sweep that finds the narrowest width at which the component still works. It renders the project's stories in Storybook's own preview frame, which a local helper starts and serves beside the page. The page ships with the skill and the helper serves it; the only things it writes into the project are comments, applied edits and pinned widths.
 
+**Screenshot gallery**: The page every visual test writes beside its report, showing each story's captures and result. It is published as a private Artifact when the person cannot reach the Preview, for example in a cloud session.
+
 **Comment**: A note a person attaches to a selected element in the Preview. It records the text, the story, the viewport and text scale, the element's selector, role, accessible name, position and size, a cropped screenshot, and a status (open, addressed, resolved). Only the person marks a comment resolved.
 
 **Anatomy mode**: The Preview mode that shows how a component is built: its numbered parts, props with their current values, the tokens it uses, and an accessibility view.

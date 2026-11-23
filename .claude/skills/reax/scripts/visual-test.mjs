@@ -7,8 +7,8 @@
 //   node visual-test.mjs --all                 run every story
 //   node visual-test.mjs --approve [all|id|Component]   approve the last run's captures as baselines
 //   node visual-test.mjs --preview [--component X]      open the live preview instead of running
-//   node visual-test.mjs --static                       build Storybook into visual-report/static-preview/ for publishing
-//                                                       when the person cannot reach this machine (no tests run)
+//   node visual-test.mjs --static                       build Storybook into visual-report/static-preview/, to deploy to
+//                                                       the person's own hosting when they cannot reach this machine (no tests run)
 //   options: --root <dir>  --force (with --approve)
 //
 // Exit code: 0 when nothing blocks; 1 for axe serious/critical findings, a story that could not run, or a failed run.
@@ -22,6 +22,7 @@ import { runChecks, checksFor, CHECK_INFO } from './lib/keyboard.mjs';
 import { cardFor } from './lib/cards.mjs';
 import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
+import { renderGallery } from './lib/gallery.mjs';
 import { selectStories as select } from './lib/select.mjs';
 import { storybookInfo, buildStatic, serveStatic, readIndex, storybookCommand } from './lib/storybook.mjs';
 import { previewReach } from './lib/reach.mjs';
@@ -154,7 +155,11 @@ async function run() {
   const runJson = { startedAt, durationMs: Date.now() - t0, root, storybook: { version: sb.version }, scope: { description: scope.description, mode: scope.mode }, config: { viewports: config.viewports, diffThreshold: config.diffThreshold, axe: config.axe }, stories, summary, exitCode };
   writeJson(path.join(reportDir, 'run.json'), runJson);
   fs.writeFileSync(path.join(reportDir, 'report.md'), renderReport(runJson));
-  console.log(JSON.stringify({ ok: exitCode === 0, ...summary, report: path.relative(root, path.join(reportDir, 'report.md')), run: path.relative(root, path.join(reportDir, 'run.json')), exitCode }, null, 2));
+  const gallery = renderGallery(runJson);
+  fs.writeFileSync(path.join(reportDir, 'gallery.html'), gallery.html);
+  const reach = previewReach();
+  console.log(JSON.stringify({ ok: exitCode === 0, ...summary, report: path.relative(root, path.join(reportDir, 'report.md')), run: path.relative(root, path.join(reportDir, 'run.json')),
+    gallery: { page: path.relative(root, path.join(reportDir, 'gallery.html')), files: gallery.files.length, fits: gallery.files.length < PUBLISH_LIMITS.files }, previewReachable: reach.local, ...(reach.local ? {} : { previewUnreachableBecause: reach.reason }), exitCode }, null, 2));
   process.exit(exitCode);
 }
 
