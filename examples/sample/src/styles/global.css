@@ -1,0 +1,3 @@
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; font-size: var(--type-body); color: var(--ink-900); background: var(--paper); }
+button, input, select, textarea { font: inherit; }

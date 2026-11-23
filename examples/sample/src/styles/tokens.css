@@ -1,0 +1,23 @@
+/* The sample's design tokens. The names are deliberately not the open DESIGN.md names,
+   so the skill has to record each token's real custom property. */
+:root {
+  --brand-blue-500: #1f4f9a;
+  --brand-blue-700: #163a72;
+  --ink-900: #1a1a1a;
+  --ink-600: #4a4a4a;
+  --paper: #ffffff;
+  --paper-sunken: #f3f3f1;
+  --danger-600: #b3261e;
+  --focus-ring: #1f4f9a;
+  --gap-1: 0.25rem;
+  --gap-2: 0.5rem;
+  --gap-3: 1rem;
+  --gap-4: 1.5rem;
+  --corner-s: 0.25rem;
+  --corner-m: 0.5rem;
+  --type-body: 1rem;
+  --type-small: 0.875rem;
+  --type-title: 1.25rem;
+  --target-min: 2.75rem;
+  --bp-tablet: 768px;
+}

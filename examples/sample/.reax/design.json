@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "scan": {
+    "tokenFiles": [
+      "src/styles/tokens.css"
+    ],
+    "componentsDir": "src/components",
+    "scannedAt": "2026-11-23T07:56:46.882Z",
+    "hashes": {
+      "tokens": "a16696f98d8af8b09a4a166b1e8dbd3cf4bf3dde",
+      "components": "7b9bd06fcccbc3469ee6378898d44e00cc04ccb2"
+    }
+  },
+  "tokenSources": {
+    "colors.primary": {
+      "file": "src/styles/tokens.css",
+      "line": 4,
+      "css": "--brand-blue-500"
+    },
+    "colors.primary-strong": {
+      "file": "src/styles/tokens.css",
+      "line": 5,
+      "css": "--brand-blue-700"
+    },
+    "colors.on-surface": {
+      "file": "src/styles/tokens.css",
+      "line": 6,
+      "css": "--ink-900"
+    },
+    "colors.on-surface-muted": {
+      "file": "src/styles/tokens.css",
+      "line": 7,
+      "css": "--ink-600"
+    },
+    "colors.surface": {
+      "file": "src/styles/tokens.css",
+      "line": 8,
+      "css": "--paper"
+    },
+    "colors.surface-sunken": {
+      "file": "src/styles/tokens.css",
+      "line": 9,
+      "css": "--paper-sunken"
+    },
+    "colors.danger": {
+      "file": "src/styles/tokens.css",
+      "line": 10,
+      "css": "--danger-600"
+    },
+    "colors.focus": {
+      "file": "src/styles/tokens.css",
+      "line": 11,
+      "css": "--focus-ring"
+    },
+    "spacing.xs": {
+      "file": "src/styles/tokens.css",
+      "line": 12,
+      "css": "--gap-1"
+    },
+    "spacing.sm": {
+      "file": "src/styles/tokens.css",
+      "line": 13,
+      "css": "--gap-2"
+    },
+    "spacing.md": {
+      "file": "src/styles/tokens.css",
+      "line": 14,
+      "css": "--gap-3"
+    },
+    "spacing.lg": {
+      "file": "src/styles/tokens.css",
+      "line": 15,
+      "css": "--gap-4"
+    },
+    "spacing.size.44": {
+      "file": "src/styles/tokens.css",
+      "line": 21,
+      "css": "--target-min"
+    },
+    "spacing.breakpoint.md": {
+      "file": "src/styles/tokens.css",
+      "line": 22,
+      "css": "--bp-tablet"
+    },
+    "rounded.sm": {
+      "file": "src/styles/tokens.css",
+      "line": 16,
+      "css": "--corner-s"
+    },
+    "rounded.md": {
+      "file": "src/styles/tokens.css",
+      "line": 17,
+      "css": "--corner-m"
+    },
+    "typography.body": {
+      "file": "src/styles/tokens.css",
+      "line": 18,
+      "css": "--type-body"
+    },
+    "typography.small": {
+      "file": "src/styles/tokens.css",
+      "line": 19,
+      "css": "--type-small"
+    },
+    "typography.title": {
+      "file": "src/styles/tokens.css",
+      "line": 20,
+      "css": "--type-title"
+    }
+  },
+  "language": {
+    "framework": "react 18",
+    "styling": "css-vars",
+    "naming": "PascalCase folders, data-slot on every part"
+  },
+  "inventory": [
+    {
+      "name": "Button",
+      "path": "src/components/Button",
+      "card": "button"
+    },
+    {
+      "name": "Chip",
+      "path": "src/components/Chip",
+      "card": null
+    },
+    {
+      "name": "Dialog",
+      "path": "src/components/Dialog",
+      "card": "dialog"
+    },
+    {
+      "name": "ProfileCard",
+      "path": "src/components/ProfileCard",
+      "card": null
+    }
+  ],
+  "shadows": {},
+  "themes": []
+}

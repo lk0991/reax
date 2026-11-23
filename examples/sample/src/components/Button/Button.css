@@ -1,0 +1,16 @@
+.sample-button {
+  min-height: var(--target-min);
+  padding: var(--gap-2) var(--gap-3);
+  border: 2px solid var(--brand-blue-500);
+  border-radius: var(--corner-m);
+  font: inherit;
+  font-size: var(--type-body);
+  background: var(--brand-blue-500);
+  color: var(--paper);
+  cursor: pointer;
+}
+.sample-button[data-variant='secondary'] { background: var(--paper); color: var(--brand-blue-500); }
+.sample-button:hover { background: var(--brand-blue-700); border-color: var(--brand-blue-700); color: var(--paper); }
+.sample-button:active { transform: translateY(1px); }
+.sample-button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.sample-button[aria-busy='true'] { cursor: progress; text-decoration: underline dotted; }
