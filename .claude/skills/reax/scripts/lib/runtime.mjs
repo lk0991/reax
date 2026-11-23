@@ -50,17 +50,6 @@ export function chromiumPath(projectRoot = process.cwd()) {
 
 export const sha1 = (data) => crypto.createHash('sha1').update(data).digest('hex');
 
-/** Hash the content of files (sorted by path), for staleness checks. Missing files hash as "missing". */
-export function hashFiles(files) {
-  const h = crypto.createHash('sha1');
-  for (const f of [...files].sort()) {
-    h.update(f + '\0');
-    try { h.update(fs.readFileSync(f)); } catch { h.update('missing'); }
-    h.update('\0');
-  }
-  return h.digest('hex');
-}
-
 /** Find the nearest directory upward from `start` that contains one of `names`. */
 export function findUp(start, names) {
   let dir = path.resolve(start);

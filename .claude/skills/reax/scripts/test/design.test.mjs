@@ -133,12 +133,25 @@ test('detects staleness when a token file or a component changes', () => {
   fs.writeFileSync(path.join(root, 'tokens.css'), ':root{--color-primary:#1f4f9a}');
   fs.mkdirSync(path.join(root, 'src/components/Button'), { recursive: true });
   fs.writeFileSync(path.join(root, 'src/components/Button/Button.tsx'), 'export const Button = () => null');
+  fs.writeFileSync(path.join(root, 'src/components/Button/Button.css'), '.b{}');
   planWrite(root, DRAFT, { apply: true });
   assert.equal(loadDesign(root, { root }).stale.stale, false);
   fs.writeFileSync(path.join(root, 'tokens.css'), ':root{--color-primary:#ff0000}');
   assert.match(loadDesign(root, { root }).stale.reasons.join(' '), /token source/);
   planWrite(root, DRAFT, { apply: true });
-  fs.writeFileSync(path.join(root, 'src/components/Button/Input.tsx'), 'export const Input = () => null');
+  // editing a component's code or styles is not drift: the inventory only records names and paths
+  fs.writeFileSync(path.join(root, 'src/components/Button/Button.tsx'), 'export const Button = () => "changed"');
+  fs.writeFileSync(path.join(root, 'src/components/Button/Button.css'), '.b{color:red}');
+  assert.equal(loadDesign(root, { root }).stale.stale, false);
+  planWrite(root, DRAFT, { apply: true });
+  fs.writeFileSync(path.join(root, 'src/components/Button/Button.css'), '.b{color:blue}');
+  assert.equal(loadDesign(root, { root }).stale.stale, false);
+  // a new, renamed or deleted component is drift
+  fs.mkdirSync(path.join(root, 'src/components/Input'));
+  fs.writeFileSync(path.join(root, 'src/components/Input/Input.tsx'), 'export const Input = () => null');
+  assert.match(loadDesign(root, { root }).stale.reasons.join(' '), /Component files/);
+  planWrite(root, DRAFT, { apply: true });
+  fs.renameSync(path.join(root, 'src/components/Input'), path.join(root, 'src/components/TextField'));
   assert.match(loadDesign(root, { root }).stale.reasons.join(' '), /Component files/);
 });
 
@@ -154,4 +167,24 @@ test('diffText shows only changed lines', () => {
   const d = diffText('a\nb\nc', 'a\nB\nc');
   assert.equal(d.changed, true); assert.match(d.text, /-b/); assert.match(d.text, /\+B/);
   assert.equal(diffText('x', 'x').changed, false);
+});
+
+test('load reports the project\'s real custom property names from the sidecar', () => {
+  const root = tmp(); fs.writeFileSync(path.join(root, 'tokens.css'), ':root{--brand-blue-500:#1f4f9a}');
+  const draft = { ...DRAFT, sidecar: { ...DRAFT.sidecar, tokenSources: { 'colors.primary': { file: 'tokens.css', line: 1, css: '--brand-blue-500' } } } };
+  planWrite(root, draft, { apply: true });
+  const d = loadDesign(root, { root });
+  assert.equal(d.tokens['colors.primary'].css, '--brand-blue-500');
+  assert.equal(d.tokens['colors.primary'].cssDerived, false);
+  // a token with no recorded name keeps the derived name and says so
+  assert.equal(d.tokens['colors.surface'].css, '--color-surface');
+  assert.equal(d.tokens['colors.surface'].cssDerived, true);
+  assert.ok(d.warnings.some((w) => w.kind === 'css-derived' && /colors\.surface/.test(w.message)));
+});
+
+test('a root given as a relative path and as an absolute path hash the same', () => {
+  const root = tmp(); fs.writeFileSync(path.join(root, 'tokens.css'), ':root{--color-primary:#1f4f9a}');
+  const cwd = process.cwd();
+  try { process.chdir(root); planWrite('.', DRAFT, { apply: true }); } finally { process.chdir(cwd); }
+  assert.equal(loadDesign(root, { root }).stale.stale, false);
 });

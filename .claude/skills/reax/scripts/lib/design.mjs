@@ -3,7 +3,7 @@
 // Component inventory, Gaps) and keeps its own machine data in a sidecar. Nothing else in the skill parses the markdown.
 import fs from 'node:fs';
 import path from 'node:path';
-import { req, hashFiles, readJson, findUp } from './runtime.mjs';
+import { req, sha1, readJson, findUp } from './runtime.mjs';
 
 export const SPEC_SECTIONS = ['Overview', 'Colors', 'Typography', 'Layout', 'Elevation & Depth', 'Shapes', 'Motion & Micro-interaction', 'Voice & Content Strategy', 'Components', "Do's and Don'ts"];
 export const REAX_SECTIONS = ['Language', 'Component inventory', 'Gaps'];
@@ -105,14 +105,20 @@ export function currentHashes(root, scan = {}) {
     const walk = (d) => (fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : /\.(tsx|ts|jsx|css)$/.test(e.name) && !/\.stories\./.test(e.name) ? [path.join(d, e.name)] : [])) : []);
     componentFiles = walk(abs(scan.componentsDir));
   }
-  return { tokens: hashFiles(tokenFiles), components: hashFiles(componentFiles) };
+  // token files: their content is what DESIGN.md summarises. Components: only which files exist, because the
+  // inventory records names and paths; editing a component's code or styles is not drift.
+  const list = componentFiles.map((f) => path.relative(root, f).split(path.sep).join('/')).sort().join('\n');
+  // hash content under project-relative names, so the root's spelling (relative or absolute) does not matter
+  const rel = (f) => path.relative(root, f).split(path.sep).join('/');
+  const tokens = sha1(tokenFiles.map((f) => rel(f)).sort().map((r) => `${r}\0${fs.existsSync(path.join(root, r)) ? sha1(fs.readFileSync(path.join(root, r))) : 'missing'}`).join('\n'));
+  return { tokens, components: sha1(list) };
 }
 
 export function checkStale(root, sidecar) {
   if (!sidecar?.scan) return { stale: false, reasons: [], unknown: true };
   const now = currentHashes(root, sidecar.scan); const was = sidecar.scan.hashes || {}; const reasons = [];
   if (was.tokens && now.tokens !== was.tokens) reasons.push('A token source file changed since DESIGN.md was written.');
-  if (was.components && now.components !== was.components) reasons.push('Component files changed since the inventory was written.');
+  if (was.components && now.components !== was.components) reasons.push('Component files were added, renamed or removed since the inventory was written.');
   return { stale: reasons.length > 0, reasons, now };
 }
 
@@ -140,6 +146,15 @@ export function loadDesign(start = process.cwd(), opts = {}) {
   } else { out.tokens = {}; out.sections = []; out.meta = {}; }
 
   out.language = sidecar?.language || {}; out.inventory = sidecar?.inventory || []; out.tokenSources = sidecar?.tokenSources || {};
+
+  // The project's own custom property names win. The derived name (--color-primary) is only a fallback, for
+  // proposed tokens and for sidecars written before init recorded names; generated code must not rely on it.
+  const derived = [];
+  for (const t of Object.values(out.tokens)) {
+    const real = out.tokenSources[t.path]?.css;
+    if (real) { t.css = real; t.cssDerived = false; } else { t.cssDerived = true; derived.push(t.path); }
+  }
+  if (derived.length && sidecar) out.warnings.push({ kind: 'css-derived', message: `No project custom property is recorded for ${derived.join(', ')}. Their CSS names are derived and may not exist in the project: check before using them, or run init.` });
   out.stale = checkStale(root, sidecar);
   return out;
 }

@@ -21,7 +21,7 @@ Request, then project (`DESIGN.md`, existing components, token files), then card
 
 - React and TypeScript. Typed props with JSDoc on every prop. One component per file. Spread the remaining native props onto the root element. Forward `ref` to the main element.
 - `data-slot="name"` on every part, using the card's slot names.
-- Tokens only: `var(--…)` custom properties from the project. No raw colour, size, radius or shadow that has a token.
+- Tokens only, by the project's real names (`var(--…)` custom properties, or the project's utility classes or theme keys). No raw colour, size, radius or shadow that has a token.
 - Mobile first: base styles for 390px, `min-width` media queries for wider, using the project's breakpoints.
 - Names for variants and sizes come from `DESIGN.md`. With none: emphasis `primary`, `secondary`, `ghost`; intent `neutral`, `info`, `success`, `warning`, `danger`; size `sm`, `md`, `lg`.
 
