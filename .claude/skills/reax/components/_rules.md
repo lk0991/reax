@@ -1,6 +1,6 @@
 # Rules for every component
 
-Loaded with every card, and alone for a component that has no card. A card adds to these and never relaxes them. A request or `DESIGN.md` may override a default, never a MUST.
+Loaded with every card, and alone for a component that has no card. A card adds to these and never relaxes them. A request or `DESIGN.md` may override a default, never a MUST. The only exception: a person explicitly accepts a listed accessibility warning in the preview's Edit mode, and the change is recorded.
 
 ## Precedence
 
