@@ -4,7 +4,7 @@ Audit existing components against `DESIGN.md`, the component cards and the mobil
 
 ## Steps
 
-1. **Load the design** (SKILL.md rule 1). Decide the scope: components named in the request, the components that changed per git (`git status`), or all components if asked. State the scope.
+1. **Load the design** (SKILL.md rule 1). Decide the scope: components named in the request, the components changed on this branch or uncommitted (as `visual-test` picks them), or all components if asked. State the scope.
 2. **For each component** load its card (through `_aliases.md`) and `_rules.md`. Read the component's `.tsx`, `.css` and stories. If a visual report from a recent run exists (`visual-report/run.json`), use its axe findings rather than guessing.
 3. **Check, in this order:**
    - **Accessibility** against the card's Requirements and the shared Requirements in `_rules.md`: name, role, keyboard, focus, contrast, target size, motion, labels, error association.

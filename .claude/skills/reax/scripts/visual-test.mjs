@@ -2,7 +2,7 @@
 // reax visual-test: builds Storybook statically, takes four captures per story, runs axe, compares with baselines,
 // and writes visual-report/report.md and run.json. Decisions: ADR 0002 and the Playwright and axe wiring ticket.
 //
-//   node visual-test.mjs                       run for the components that changed (per git)
+//   node visual-test.mjs                       run for the components changed on this branch or uncommitted
 //   node visual-test.mjs --component Button    run for named components (comma separated)
 //   node visual-test.mjs --all                 run every story
 //   node visual-test.mjs --approve [all|id|Component]   approve the last run's captures as baselines
@@ -86,7 +86,7 @@ async function run() {
   try { index = await readIndex(server.url); } catch (e) { await server.close(); fail(`Could not read Storybook's story list: ${e.message}`); }
 
   const scope = select({ root, config, args, all: index.stories });
-  if (!scope.stories.length) { await server.close(); console.log(JSON.stringify({ ok: true, ran: 0, message: scope.description, hint: 'Use --all, or --component <name>, to choose stories.' }, null, 2)); process.exit(0); }
+  if (!scope.stories.length) { await server.close(); console.log(JSON.stringify({ result: 'nothing-tested', ran: 0, message: scope.description, note: 'No story was tested. This is not a pass.', hint: 'Use --all, or --component <name>, to choose stories.' }, null, 2)); process.exit(0); }
   log(`Running ${scope.stories.length} stories x ${config.viewports.length} captures (${scope.description}).`);
 
   const { chromium: pw } = req('playwright', root); const { AxeBuilder } = req('@axe-core/playwright', root);

@@ -12,6 +12,7 @@ export const DEFAULTS = {
   diffThreshold: 0.001,
   axe: { tags: ['wcag2a', 'wcag2aa', 'wcag22aa', 'best-practice'], disabledRules: [], blockingImpacts: ['serious', 'critical'] },
   skipTag: 'reax-skip',
+  baseBranch: null,
   concurrency: 4,
   storyTimeoutMs: 30_000,
   stabilityAttempts: 3,

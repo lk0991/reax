@@ -2,7 +2,7 @@
 // reax preview helper: starts Storybook (or reuses a running one), and serves the preview page next to Storybook's own
 // frame on one local address. Decisions: ADR 0003 and the preview wiring ticket.
 //
-//   node preview.mjs                          open on the components that changed (per git)
+//   node preview.mjs                          open on the components changed on this branch or uncommitted
 //   node preview.mjs --component Button       open on named components
 //   node preview.mjs --story <id>             open on one story
 //   options: --root <dir>  --port <n>  --storybook-url <url>  (reuse a Storybook that is already running)
