@@ -173,14 +173,14 @@ function assemble(story, results, keyboard = { card: null, results: [] }) {
   const captures = []; const axeMap = new Map(); const textMap = new Map(); const reasons = []; let failure = false; let warning = false;
   for (const vp of config.viewports) {
     const r = results.get(`${story.id}|${vp.name}`);
-    const cap = { viewport: vp.name, status: r.status, unstable: r.unstable, screenshot: null, baseline: 'none', diff: null, overflow: r.overflow, error: r.error };
+    const cap = { viewport: vp.name, status: r.status, unstable: r.unstable, screenshot: null, baseline: 'none', diff: null, size: r.size, content: r.content, overflow: r.overflow, error: r.error };
     if (r.buffer) {
       const rel = path.posix.join('screenshots', story.id, `${vp.name}.png`); const abs = path.join(reportDir, rel);
       fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, r.buffer); cap.screenshot = rel;
       const basePath = path.join(baselineDir, story.id, `${vp.name}.png`);
       if (fs.existsSync(basePath) && !r.unstable) {
         const d = compareImages(fs.readFileSync(basePath), r.buffer, root);
-        cap.baseline = d.ratio > config.diffThreshold ? 'changed' : 'matched'; cap.diff = { ratio: d.ratio, pixels: d.pixels, dimsDiffer: d.dimsDiffer, image: null };
+        cap.baseline = d.ratio > config.diffThreshold ? 'changed' : 'matched'; cap.diff = { ratio: d.ratio, pixels: d.pixels, dimsDiffer: d.dimsDiffer, box: d.box || null, image: null };
         if (d.diffPng && cap.baseline === 'changed') { const drel = path.posix.join('diffs', story.id, `${vp.name}.png`); fs.mkdirSync(path.dirname(path.join(reportDir, drel)), { recursive: true }); fs.writeFileSync(path.join(reportDir, drel), d.diffPng); cap.diff.image = drel; }
       }
     }

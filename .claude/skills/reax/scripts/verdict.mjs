@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The quality verdict for the current change: gathers the evidence (type check, visual test, scope of the change),
 // writes it to visual-report/verdict/evidence.json, decides, and writes the plain-language page
-// visual-report/verdict/index.html. Spec #35; decisions in lib/verdict.mjs.
+// visual-report/verdict.html (beside the screenshots it shows, so it publishes with them). Spec #35.
 //   node verdict.mjs --root <project> [--component Button,Card] [--expect src/styles/tokens.css] [--no-visual]
 //   --component: the components the change is about (default: those changed on this branch or uncommitted)
 //   --expect:    files outside the components the change was meant to touch, so they are not counted as surprises
@@ -19,6 +19,7 @@ import { decide, renderVerdict, dependencyChanges, classifyScope } from './lib/v
 import { previewReach } from './lib/reach.mjs';
 import { lintCommand, reviewEvidence, conventionsEvidence, reviewerEvidence, reviewerPacket, diffHash } from './lib/evidence.mjs';
 import { cardFor } from './lib/cards.mjs';
+import { beforeAfter, renderBeforeAfter } from './lib/before-after.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -120,7 +121,18 @@ if (args.packet) {
   packet = path.join(outDir, 'review-packet.md');
   fs.writeFileSync(packet, reviewerPacket({ diff, hash, files, evidence: 'visual-report/verdict/evidence.json', screenshots: shots, out: 'visual-report/verdict/reviewer.json' }));
 }
-fs.writeFileSync(path.join(outDir, 'index.html'), renderVerdict(evidence, v));
+// before and after: the approved screenshots beside this run's, copied next to the page so it publishes as is
+let ba = null;
+if (evidence.checks.visualTest.summary) {
+  const baseDir = path.join(root, '.reax', 'baselines'); const baselines = {};
+  if (fs.existsSync(baseDir)) for (const id of fs.readdirSync(baseDir)) baselines[id] = fs.readdirSync(path.join(baseDir, id)).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
+  ba = beforeAfter(readJson(path.join(root, 'visual-report', 'run.json'), { stories: [] }), baselines);
+  fs.rmSync(path.join(root, 'visual-report', 'before'), { recursive: true, force: true });
+  for (const c of ba.copies) { const to = path.join(root, 'visual-report', c.to); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(path.join(root, c.from), to); }
+}
+const pagePath = path.join(root, 'visual-report', 'verdict.html');
+fs.rmSync(path.join(outDir, 'index.html'), { force: true });
+fs.writeFileSync(pagePath, renderVerdict(evidence, v, { extra: ba ? renderBeforeAfter(ba) : '' }));
 const reach = previewReach();
-console.log(JSON.stringify({ level: v.level, headline: v.headline, page: path.relative(root, path.join(outDir, 'index.html')), evidence: path.relative(root, path.join(outDir, 'evidence.json')), ...(packet ? { reviewerPacket: path.relative(root, packet) } : {}), diffHash: hash, blocking: v.blocking, concerns: v.concerns, gaps: v.gaps.map((g) => g.label), previewReachable: reach.local }, null, 2));
+console.log(JSON.stringify({ level: v.level, headline: v.headline, page: path.relative(root, pagePath), publish: { page: 'visual-report/verdict.html', files: ba ? ba.files : [] }, evidence: path.relative(root, path.join(outDir, 'evidence.json')), ...(packet ? { reviewerPacket: path.relative(root, packet) } : {}), diffHash: hash, blocking: v.blocking, concerns: v.concerns, gaps: v.gaps.map((g) => g.label), previewReachable: reach.local }, null, 2));
 process.exit(v.level === 'blocked' ? 1 : 0);

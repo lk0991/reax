@@ -8,7 +8,7 @@ Answer, for a change to components, "can this merge without a developer reviewin
 node scripts/verdict.mjs --root <project> [--component Button,Card] [--expect <file>,<file>]
 ```
 
-It gathers the evidence for the change (on this branch since its base, plus uncommitted): the project's type check, the visual test of the changed components (all stories when a style that applies everywhere changed), and the scope of the change: changed files, added or changed dependencies, files outside the components, and global styles. Pass `--expect` with the files outside the components the change was meant to touch (a token change's token file), so they do not count as surprises. It writes `visual-report/verdict/evidence.json` and the page `visual-report/verdict/index.html`, and prints the level.
+It gathers the evidence for the change (on this branch since its base, plus uncommitted): the project's type check, the visual test of the changed components (all stories when a style that applies everywhere changed), and the scope of the change: changed files, added or changed dependencies, files outside the components, and global styles. Pass `--expect` with the files outside the components the change was meant to touch (a token change's token file), so they do not count as surprises. It writes `visual-report/verdict/evidence.json` and the page `visual-report/verdict.html` with a before and after of every story that looks different from its approved screenshots, and prints the level.
 
 ## The independent reviewer
 
@@ -29,6 +29,6 @@ If this session cannot start a separate agent, write `{ "diffHash": "<hash>", "s
 
 ## Report it
 
-Lead with the level and the one-line headline, in plain words. Then what must be fixed, what should be fixed and what was not checked, a line each. Then where the page is: locally, the file; in a cloud session, publish `visual-report/verdict/index.html` as a private Artifact (it has no other files). Never describe a level the command did not print.
+Lead with the level and the one-line headline, in plain words. Then what must be fixed, what should be fixed and what was not checked, a line each. Then where the page is: locally, the file; in a cloud session, publish `visual-report/verdict.html` as a private Artifact with the files the summary lists under `publish.files` (each at the same path relative to `visual-report/`). Never describe a level the command did not print.
 
 On **Blocked** or **Needs work**, say what you will do about each item and, when the change is yours to make, fix it, run the verdict and the reviewer again, at most two rounds, before asking the person. After two rounds, report what is still open, item by item, and stop. Never change a check, a Baseline or a threshold to get a better level.

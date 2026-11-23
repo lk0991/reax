@@ -117,7 +117,7 @@ export async function keyboardCapture({ browser, baseUrl, story, vp, config, che
 export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder }) {
   const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce', colorScheme: 'light' });
   const page = await context.newPage();
-  const result = { viewport: vp.name, status: 'ok', unstable: false, buffer: null, axe: [], textScale: [], overflow: null, error: null };
+  const result = { viewport: vp.name, status: 'ok', unstable: false, buffer: null, size: null, content: null, axe: [], textScale: [], overflow: null, error: null };
   try {
     await openStory(page, baseUrl, story, config);
     await page.addStyleTag({ content: ANIM_OFF });
@@ -143,6 +143,13 @@ export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder 
       shot = b; stable = a.equals(b); if (!stable) await sleep(200);
     }
     result.buffer = shot; result.unstable = !stable;
+    result.size = { w: shot.readUInt32BE(16), h: shot.readUInt32BE(20) };
+    // where the story's content is, for cropping a before and after to it
+    result.content = await page.evaluate(() => {
+      const root = document.querySelector('#storybook-root') || document.body; let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+      for (const el of root.querySelectorAll('*')) { const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue; x0 = Math.min(x0, r.left + scrollX); y0 = Math.min(y0, r.top + scrollY); x1 = Math.max(x1, r.right + scrollX); y1 = Math.max(y1, r.bottom + scrollY); }
+      return x1 < x0 ? null : { x: Math.max(0, Math.floor(x0)), y: Math.max(0, Math.floor(y0)), w: Math.ceil(x1 - Math.max(0, x0)), h: Math.ceil(y1 - Math.max(0, y0)) };
+    }).catch(() => null);
     if (state === 'pressed') await page.mouse.up(); // axe and the overflow check see the page at rest
 
     const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
