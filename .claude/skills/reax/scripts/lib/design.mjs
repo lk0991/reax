@@ -135,7 +135,8 @@ export function findRoot(start) {
 export function loadDesign(start = process.cwd(), opts = {}) {
   const root = opts.root ? path.resolve(opts.root) : findRoot(start);
   const designPath = path.join(root, 'DESIGN.md'); const sidecarPath = path.join(root, '.reax', 'design.json');
-  const out = { root, designPath, sidecarPath, exists: { design: fs.existsSync(designPath), sidecar: fs.existsSync(sidecarPath) }, gaps: [], errors: [], warnings: [] };
+  const componentsPath = path.join(root, 'COMPONENTS.md');
+  const out = { root, designPath, sidecarPath, componentsPath, exists: { design: fs.existsSync(designPath), sidecar: fs.existsSync(sidecarPath), components: fs.existsSync(componentsPath) }, gaps: [], errors: [], warnings: [] };
   const sidecar = out.exists.sidecar ? readJson(sidecarPath, null) : null;
   if (out.exists.sidecar && !sidecar) out.errors.push({ kind: 'sidecar', message: '.reax/design.json is not valid JSON.' });
   out.sidecar = sidecar;
@@ -150,6 +151,9 @@ export function loadDesign(start = process.cwd(), opts = {}) {
   } else { out.tokens = {}; out.sections = []; out.meta = {}; }
 
   out.language = sidecar?.language || {}; out.inventory = sidecar?.inventory || []; out.tokenSources = sidecar?.tokenSources || {};
+  out.conventions = sidecar?.conventions || null;
+  if (out.conventions && !out.exists.components) out.errors.push({ kind: 'components-missing', message: 'COMPONENTS.md does not exist, though init recorded component conventions. Run init to write it again.' });
+  if (sidecar && !out.conventions && out.inventory.length) out.warnings.push({ kind: 'conventions-missing', message: 'No component conventions are recorded yet. init can learn them and write COMPONENTS.md, so new components match the existing ones.' });
 
   // The project's own custom property names win. The derived name (--color-primary) is only a fallback, for
   // proposed tokens and for sidecars written before init recorded names; generated code must not rely on it.

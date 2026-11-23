@@ -19,7 +19,7 @@ The first word of the request picks the command. With no command, infer it from 
 
 | Command | Use it to | Read |
 | --- | --- | --- |
-| `init` | Scan the project and write `DESIGN.md` and `.reax/design.json` | [reference/init.md](reference/init.md) |
+| `init` | Scan the project and write `DESIGN.md`, `COMPONENTS.md` and `.reax/design.json` | [reference/init.md](reference/init.md) |
 | `from-text` | Build a component from a text description | [reference/from-text.md](reference/from-text.md) |
 | `from-figma` | Build a component from an image, screenshot or Figma link | [reference/from-figma.md](reference/from-figma.md) |
 | `review` | Audit existing components, findings to chat and `visual-report/review.json` | [reference/review.md](reference/review.md) |
@@ -31,8 +31,8 @@ Read the reference for the command before you act. Do not read the others.
 
 ## Rules that hold in every command
 
-1. **Load the design first.** Before creating or reviewing anything, run `node scripts/design.mjs check --root <project>` (paths below are relative to this skill's folder). Exit 0: run `load` and use it. Missing: offer `init` (in `from-text` and `from-figma`, as part of the one plan they ask for), and carry on with the card defaults only if the person declines. Stale: say what drifted and offer `init`. Never refresh silently.
-2. **Precedence.** The request wins, then the project (`DESIGN.md`, its existing components and token files), then the card and shared defaults. Accessibility requirements (the Requirements lists in the cards and [components/_rules.md](components/_rules.md), each citing its WCAG success criterion) apply whatever the order says. Defaults are overridable. If a request conflicts with one, do the accessible thing and say so in one line. A chat request never overrides one; only an exception accepted in Edit mode does.
+1. **Load the design first.** Before creating or reviewing anything, run `node scripts/design.mjs check --root <project>` (paths below are relative to this skill's folder). Exit 0: run `load` and use it, and read `COMPONENTS.md` if it exists before writing a component or a story. Missing: offer `init` (in `from-text` and `from-figma`, as part of the one plan they ask for), and carry on with the card defaults only if the person declines. Stale: say what drifted and offer `init`. Never refresh silently.
+2. **Precedence.** The request wins, then the project (`DESIGN.md`, `COMPONENTS.md`, its existing components and token files), then the card and shared defaults. Accessibility requirements (the Requirements lists in the cards and [components/_rules.md](components/_rules.md), each citing its WCAG success criterion) apply whatever the order says. Defaults are overridable. If a request conflicts with one, do the accessible thing and say so in one line. A chat request never overrides one; only an exception accepted in Edit mode does.
 3. **Ask before installing** anything into the project. Say which packages and why, then wait (in a build command, the one plan is that question). Skill dependencies (Playwright, axe, pixelmatch) install into `~/.cache/reax`, not the project: run `node scripts/setup.mjs --check --root <project>`, and `--install` only after the person agrees.
 4. **Never edit an existing component unprompted.** `review` reports and saves its findings, `improve` lists. A person asks for the change, or approves it in the preview's Edit mode.
 5. **Use the project's tokens, by their real names.** Use the `css` name `design.mjs load` reports for each token: a `var(--…)` custom property, or the project's theme key or utility class when its `Language` is utility classes. A token marked `cssDerived` has no recorded project name: check that it exists before using it. Never invent a colour, size or radius that is not a token. If a needed token does not exist, say so, use the nearest and list it as a gap.
@@ -50,7 +50,7 @@ src/components/Button/
   index.ts            re-exports the component (per folder, no directory-wide barrel)
 ```
 
-Use the components directory the project already uses (`init` records it). Follow the `Language` section of `DESIGN.md`: omit `Button.css` for utility classes, use `Button.module.css` for CSS modules, match the naming and prop patterns it records. No separate unit test: the story is the test.
+This is the shape for a project with no components yet. A project with components has its own, recorded by `init` in **`COMPONENTS.md`**: folder layout and file names, how components and props are declared, how styles select variants, prop naming, and how stories are written, each with how many components follow it. New components and stories follow `COMPONENTS.md`, so they read like the ones already there; the card still decides anatomy, slots, states and Requirements. Use the components directory the project already uses (`init` records it). No separate unit test: the story is the test.
 
 Every part of a component carries `data-slot="name"`, using the slot names from the component card. The preview's comment, anatomy and edit modes and the report all depend on them.
 
@@ -68,7 +68,8 @@ Every part of a component carries `data-slot="name"`, using the slot names from 
 | Path | What | Commit it? |
 | --- | --- | --- |
 | `DESIGN.md` | Design tokens and language, open DESIGN.md format | yes |
-| `.reax/design.json` | Machine data beside it | yes |
+| `COMPONENTS.md` | How components are written here: layout, names, declarations, styling, props, stories | yes |
+| `.reax/design.json` | Machine data beside them | yes |
 | `.reax/baselines/` | Approved reference screenshots | yes |
 | `.reax/visual-test.json` | Optional settings | yes |
 | `.reax/viewports.json` | Widths pinned in the preview | yes |
@@ -79,6 +80,7 @@ Every part of a component carries `data-slot="name"`, using the slot names from 
 All scripts live in `scripts/`, run with Node 20 or newer, and print JSON or Markdown. Run them with `--root <project>` when the working directory is not the project.
 
 - `design.mjs`: `check`, `load`, `tokens`, `write`, `diff`
+- `conventions.mjs`: learns the project's component conventions, for `init`
 - `setup.mjs`: `--check`, `--install`, `--install-browser`
 - `visual-test.mjs`: the visual test, `--approve`, `--preview`
 - `preview.mjs`: the live preview helper

@@ -6,7 +6,7 @@ Every list has two kinds of rule. **Requirements** come from WCAG 2.2 AA, each w
 
 ## Precedence
 
-Request, then project (`DESIGN.md`, existing components, token files), then card defaults. Requirements apply whatever the order says: do the accessible thing and say so in one line.
+Request, then project (`DESIGN.md`, `COMPONENTS.md`, existing components, token files), then card defaults. Requirements apply whatever the order says: do the accessible thing and say so in one line.
 
 ## Requirements (WCAG 2.2 AA)
 

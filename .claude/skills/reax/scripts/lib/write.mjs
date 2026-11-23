@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { req } from './runtime.mjs';
 import { canonicalSection, SPEC_SECTIONS, REAX_SECTIONS, currentHashes, diffText, HASH_VERSION } from './design.mjs';
+import { composeComponentsMarkdown } from './components-md.mjs';
 
 const HUMAN_OWNED = new Set(['Overview', "Do's and Don'ts"]);
 
@@ -64,7 +65,7 @@ export function composeDesignMarkdown(draft, existing = null) {
 export function composeSidecar(root, draft) {
   const scan = { ...(draft.scan || {}), scannedAt: new Date().toISOString() };
   scan.hashes = currentHashes(root, scan); scan.hashVersion = HASH_VERSION;
-  return { schemaVersion: 1, scan, tokenSources: draft.sidecar?.tokenSources || {}, language: draft.sidecar?.language || {}, inventory: draft.sidecar?.inventory || [], shadows: draft.sidecar?.shadows || {}, themes: draft.sidecar?.themes || [] };
+  return { schemaVersion: 1, scan, ...(draft.components ? { conventions: draft.components.conventions } : {}), tokenSources: draft.sidecar?.tokenSources || {}, language: draft.sidecar?.language || {}, inventory: draft.sidecar?.inventory || [], shadows: draft.sidecar?.shadows || {}, themes: draft.sidecar?.themes || [] };
 }
 
 /** Compute what would be written, as a diff against what exists. Writes only when `apply` is true. */
@@ -78,10 +79,17 @@ export function planWrite(root, draft, { apply = false } = {}) {
   const stripStamp = (s) => (s ? s.replace(/"scannedAt": "[^"]*"/, '"scannedAt": "-"') : s);
   const dDesign = diffText(existing || '', nextDesign, existing ? 'DESIGN.md (current)' : '(new)', 'DESIGN.md (proposed)');
   const dSidecar = diffText(stripStamp(existingSidecar) || '', stripStamp(nextSidecar), existingSidecar ? '.reax/design.json (current)' : '(new)', '.reax/design.json (proposed)');
-  const plan = { root, designPath, sidecarPath, isNew: { design: existing === null, sidecar: existingSidecar === null }, changed: dDesign.changed || dSidecar.changed, diff: [dDesign.text, dSidecar.text].filter(Boolean).join('\n\n'), applied: false };
+  // COMPONENTS.md, when the draft carries the learned component conventions
+  const componentsPath = path.join(root, 'COMPONENTS.md');
+  const existingComponents = fs.existsSync(componentsPath) ? fs.readFileSync(componentsPath, 'utf8') : null;
+  const nextComponents = draft.components ? composeComponentsMarkdown(draft, existingComponents) : null;
+  const dComponents = nextComponents ? diffText(existingComponents || '', nextComponents, existingComponents ? 'COMPONENTS.md (current)' : '(new)', 'COMPONENTS.md (proposed)') : { changed: false, text: '' };
+  const plan = { root, designPath, sidecarPath, componentsPath, isNew: { design: existing === null, sidecar: existingSidecar === null, components: !!nextComponents && existingComponents === null }, changed: dDesign.changed || dSidecar.changed || dComponents.changed, diff: [dDesign.text, dComponents.text, dSidecar.text].filter(Boolean).join('\n\n'), applied: false };
   if (apply && plan.changed) {
     fs.mkdirSync(path.dirname(sidecarPath), { recursive: true });
-    fs.writeFileSync(designPath, nextDesign); fs.writeFileSync(sidecarPath, nextSidecar); plan.applied = true;
+    fs.writeFileSync(designPath, nextDesign); fs.writeFileSync(sidecarPath, nextSidecar);
+    if (nextComponents) fs.writeFileSync(componentsPath, nextComponents);
+    plan.applied = true;
   }
   return plan;
 }

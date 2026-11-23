@@ -14,7 +14,7 @@ Install and configure Storybook in the project, and write stories for components
    - Remove the sample `src/stories/` folder the init adds, after telling the person.
    - Add `storybook-static` and `visual-report` to `.gitignore`.
    - Do not add the Storybook test runner or Chromatic. `visual-test` is the test.
-4. **Write missing stories.** For each component without a `Name.stories.tsx` (scope: named or changed components), write one following [from-text](from-text.md) step 5: `satisfies Meta`, an `argTypes` description for every prop, one story per state from the card, a long-text story. Do not edit existing stories unprompted.
+4. **Write missing stories.** For each component without a `Name.stories.tsx` (scope: named or changed components), write one following [from-text](from-text.md) step 5, in the story conventions of `COMPONENTS.md` when it exists (format, title scheme, meta tags, story shape), copying an existing story file's structure: `satisfies Meta`, an `argTypes` description for every prop, one story per state from the card, a long-text story. Do not edit existing stories unprompted.
 5. **Verify** by running `visual-test --component Name`: it builds Storybook, which proves the setup works. If the build fails, report Storybook's last lines and fix only what you caused.
 
 ## Output to the person

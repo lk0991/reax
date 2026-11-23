@@ -1,6 +1,6 @@
 # reax sample
 
-A small React and Storybook project for running the reax skill end to end. It has a token file whose names are not the open DESIGN.md names, a `DESIGN.md` and design sidecar, and four components:
+A small React and Storybook project for running the reax skill end to end. It has a token file whose names are not the open DESIGN.md names, a `DESIGN.md`, a `COMPONENTS.md` (its component conventions) and design sidecar, and four components:
 
 - **Button** and **ProfileCard** pass. ProfileCard changes layout at the tablet breakpoint.
 - **Dialog** is a native modal dialog, for keyboard and focus checks. Its `NoFocusReturn` story is deliberately broken: focus does not return to the trigger, so the keyboard checks must fail it.
