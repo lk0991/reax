@@ -9,7 +9,7 @@ const component = (id) => id.split('--')[0];
 const PAD = 16;
 
 /** The area to show of a changed capture: its content and the changed pixels, plus a margin; null to show it whole. */
-function cropOf(c) {
+export function cropOf(c) {
   const boxes = [c.content, c.diff?.box].filter(Boolean);
   if (!c.size || !boxes.length || c.diff?.dimsDiffer) return null;
   const x0 = Math.max(0, Math.min(...boxes.map((b) => b.x)) - PAD); const y0 = Math.max(0, Math.min(...boxes.map((b) => b.y)) - PAD);
@@ -18,10 +18,10 @@ function cropOf(c) {
 }
 const pct = (n) => `${+n.toFixed(2)}%`;
 /** An image, cropped with CSS to `crop` (the same crop for before, after and the changed pixels). */
-function shot(src, alt, crop) {
+export function shot(src, alt, crop, zoom = 2) {
   const img = `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy"`;
   if (!crop) return `${img}>`;
-  return `<div class="crop" style="aspect-ratio: ${crop.w} / ${crop.h}; max-width: ${crop.w * 2}px">${img} style="width: ${pct((crop.imageW / crop.w) * 100)}; left: ${pct((-crop.x / crop.w) * 100)}; top: ${pct((-crop.y / crop.h) * 100)}"></div>`;
+  return `<div class="crop" style="aspect-ratio: ${crop.w} / ${crop.h}; max-width: ${crop.w * zoom}px">${img} style="width: ${pct((crop.imageW / crop.w) * 100)}; left: ${pct((-crop.x / crop.w) * 100)}; top: ${pct((-crop.y / crop.h) * 100)}"></div>`;
 }
 
 /**

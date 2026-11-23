@@ -58,6 +58,10 @@ Check against `DESIGN.md` and the component's card. Automated overflow checks mi
 
 In chat: the counts (failures, warnings, passes), the blocking items in a line each, the path to `visual-report/report.md`, and that the screenshots are there to confirm. Then offer `improve`. When the run was for a change, follow it with the [verdict](verdict.md).
 
+## The catalogue
+
+Every run also writes `visual-report/catalogue.html`: every token by its real name (colours with their contrast on the ground), and each component's stories at phone and desktop width, with the card it follows and how far it follows `COMPONENTS.md`. It is the page to show a person who wants to see the system rather than read it. It is complete only after a run with `--all` (the summary's `catalogue.complete`); a narrower run says which components it covered. Publish it like the gallery, with the screenshots it references.
+
 ## When the person cannot reach this machine
 
 The live preview is on 127.0.0.1. In a cloud or remote session (the run's summary has `previewReachable: false` with the reason; the preview's `ready` line has `reachable: false`), the person's browser cannot open it. Do not offer its URL as if it works. Instead:

@@ -77,7 +77,7 @@ Every part of a component carries `data-slot="name"`, using the slot names from 
 | `.reax/baselines/` | Approved reference screenshots | yes |
 | `.reax/visual-test.json` | Optional settings | yes |
 | `.reax/viewports.json` | Widths pinned in the preview | yes |
-| `visual-report/` | `report.md`, `run.json`, `gallery.html`, screenshots, comments, `review.json`, `improvements.md` | no, add to `.gitignore` |
+| `visual-report/` | `report.md`, `run.json`, `gallery.html`, `catalogue.html`, `verdict.html`, screenshots, comments, `review.json`, `improvements.md` | no, add to `.gitignore` |
 
 ## Scripts
 

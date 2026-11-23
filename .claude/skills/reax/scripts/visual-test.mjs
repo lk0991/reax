@@ -24,6 +24,9 @@ import { cardFor } from './lib/cards.mjs';
 import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
 import { renderGallery } from './lib/gallery.mjs';
+import { renderCatalogue } from './lib/catalogue.mjs';
+import { loadDesign } from './lib/design.mjs';
+import { analyzeComponents, collectFiles, deviations as conventionDeviations } from './lib/conventions.mjs';
 import { selectStories as select } from './lib/select.mjs';
 import { storybookInfo, buildStatic, serveStatic, readIndex, storybookCommand } from './lib/storybook.mjs';
 import { previewReach } from './lib/reach.mjs';
@@ -158,13 +161,23 @@ async function run() {
   fs.writeFileSync(path.join(reportDir, 'report.md'), renderReport(runJson));
   const gallery = renderGallery(runJson);
   fs.writeFileSync(path.join(reportDir, 'gallery.html'), gallery.html);
+  // the catalogue: every token and the stories this run covered
+  let catalogue = null;
+  try {
+    const design = loadDesign(root, { root });
+    let devs = null;
+    if (design.conventions) { devs = {}; const now = analyzeComponents(collectFiles(root, design.conventions.componentsDir), { componentsDir: design.conventions.componentsDir }); for (const d of conventionDeviations(design.conventions, now)) devs[d.component] = (devs[d.component] || 0) + 1; }
+    catalogue = renderCatalogue({ design, run: runJson, deviations: devs, scope: scope.mode === 'all' ? null : scope.description });
+    fs.writeFileSync(path.join(reportDir, 'catalogue.html'), catalogue.html);
+  } catch (e) { log(`No catalogue: ${e.message}`); }
   // can the page and its screenshots go out in one publish? (count, total size and size of each file)
   const sizes = gallery.files.map((f) => fs.statSync(path.join(reportDir, f)).size);
   const galleryBytes = sizes.reduce((n, b) => n + b, 0) + Buffer.byteLength(gallery.html);
   const galleryFits = gallery.files.length + 1 <= PUBLISH_LIMITS.files && galleryBytes <= PUBLISH_LIMITS.bytes && sizes.every((b) => b <= PUBLISH_LIMITS.fileBytes);
   const reach = previewReach();
   console.log(JSON.stringify({ ok: exitCode === 0, ...summary, report: path.relative(root, path.join(reportDir, 'report.md')), run: path.relative(root, path.join(reportDir, 'run.json')),
-    gallery: { page: path.relative(root, path.join(reportDir, 'gallery.html')), files: gallery.files.length, bytes: galleryBytes, fits: galleryFits }, previewReachable: reach.local, ...(reach.local ? {} : { previewUnreachableBecause: reach.reason }), exitCode }, null, 2));
+    gallery: { page: path.relative(root, path.join(reportDir, 'gallery.html')), files: gallery.files.length, bytes: galleryBytes, fits: galleryFits },
+    ...(catalogue ? { catalogue: { page: path.relative(root, path.join(reportDir, 'catalogue.html')), files: catalogue.files.length, fits: catalogue.files.length + 1 <= PUBLISH_LIMITS.files, complete: scope.mode === 'all' } } : {}), previewReachable: reach.local, ...(reach.local ? {} : { previewUnreachableBecause: reach.reason }), exitCode }, null, 2));
   process.exit(exitCode);
 }
 
