@@ -5,11 +5,12 @@
       "src/styles/tokens.css"
     ],
     "componentsDir": "src/components",
-    "scannedAt": "2026-11-23T07:56:46.882Z",
+    "scannedAt": "2026-11-23T08:39:56.821Z",
     "hashes": {
       "tokens": "a16696f98d8af8b09a4a166b1e8dbd3cf4bf3dde",
       "components": "7b9bd06fcccbc3469ee6378898d44e00cc04ccb2"
-    }
+    },
+    "hashVersion": 2
   },
   "tokenSources": {
     "colors.primary": {

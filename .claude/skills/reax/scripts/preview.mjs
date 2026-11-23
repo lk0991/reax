@@ -33,7 +33,8 @@ const log = (m) => console.error(m);
 // woken by each one; the file starts empty for each preview
 const eventsFile = path.join(outDir, 'preview-events.jsonl');
 fs.mkdirSync(outDir, { recursive: true }); fs.writeFileSync(eventsFile, '');
-const emit = (o) => { const line = JSON.stringify(o); console.log(line); try { fs.appendFileSync(eventsFile, line + '\n'); } catch { /* stdout still has it */ } };
+const runId = crypto.randomBytes(4).toString('hex');
+const emit = (o) => { const line = JSON.stringify({ ...o, run: runId }); console.log(line); try { fs.appendFileSync(eventsFile, line + '\n'); } catch { /* stdout still has it */ } };
 const die = (message, output) => { emit({ event: 'error', message, ...(output ? { output } : {}) }); if (output) log(output); process.exit(1); };
 let config;
 try { config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {})); } catch (e) { die(e.message); }

@@ -114,8 +114,12 @@ export function currentHashes(root, scan = {}) {
   return { tokens, components: sha1(list) };
 }
 
+/** The hashing scheme currentHashes uses. Hashes stored under an older scheme cannot be compared, so they are not drift. */
+export const HASH_VERSION = 2;
+
 export function checkStale(root, sidecar) {
   if (!sidecar?.scan) return { stale: false, reasons: [], unknown: true };
+  if ((sidecar.scan.hashVersion || 1) !== HASH_VERSION) return { stale: false, reasons: [], unknown: true, oldHashes: true };
   const now = currentHashes(root, sidecar.scan); const was = sidecar.scan.hashes || {}; const reasons = [];
   if (was.tokens && now.tokens !== was.tokens) reasons.push('A token source file changed since DESIGN.md was written.');
   if (was.components && now.components !== was.components) reasons.push('Component files were added, renamed or removed since the inventory was written.');
@@ -156,6 +160,7 @@ export function loadDesign(start = process.cwd(), opts = {}) {
   }
   if (derived.length && sidecar) out.warnings.push({ kind: 'css-derived', message: `No project custom property is recorded for ${derived.join(', ')}. Their CSS names are derived and may not exist in the project: check before using them, or run init.` });
   out.stale = checkStale(root, sidecar);
+  if (out.stale.oldHashes) out.warnings.push({ kind: 'hash-version', message: 'The sidecar was written by an older version of the skill, so drift cannot be checked. The next init records it again.' });
   return out;
 }
 

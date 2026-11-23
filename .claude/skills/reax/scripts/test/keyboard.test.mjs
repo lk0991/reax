@@ -27,6 +27,11 @@ const PAGES = {
   'no-focus-style': frame(`<button>One</button><button class="bare">Two</button>`, '', '.bare:focus-visible{outline:none}'),
   'unreachable': frame(`<button>One</button><div role="button" class="fake">Two</div>`),
   'switch': frame(`<label><input type="checkbox" role="switch"> Wi-Fi</label>`),
+  'opens-focused': frame(`<dialog id="d"><h2>Title</h2><button id="x">Close</button></dialog>`, `document.getElementById('d').showModal();`),
+  'tabs': frame(`<div role="tablist" aria-label="T"><button role="tab" aria-selected="true">One</button><button role="tab" tabindex="-1">Two</button><button role="tab" tabindex="-1">Three</button></div><div role="tabpanel" tabindex="0">Panel</div>`,
+    `const tabs=[...document.querySelectorAll('[role=tab]')]; tabs.forEach((t,i)=>t.addEventListener('keydown',e=>{ if(e.key==='ArrowRight'){ const n=tabs[(i+1)%tabs.length]; tabs.forEach(x=>x.tabIndex=-1); n.tabIndex=0; n.focus(); }}));`),
+  'pseudo-ring': frame(`<button class="p">Save</button>`, '', '.p{position:relative;outline:none} .p:focus-visible{outline:none} .p:focus-visible::after{content:"";position:absolute;inset:-4px;box-shadow:0 0 0 3px blue}'),
+  'odd-radio-names': frame(`<label><input type="radio" name='size"x' checked> A</label><label><input type="radio" name='size"x'> B</label><label><input type="radio"> Lone 1</label><label><input type="radio"> Lone 2</label>`),
   'radios': frame(`<fieldset><legend>Size</legend><label><input type="radio" name="s" value="a" checked> A</label><label><input type="radio" name="s" value="b"> B</label></fieldset>`),
 };
 
@@ -76,4 +81,29 @@ test('Space toggles a switch, and arrows move a radio selection', { skip }, asyn
     assert.equal(byId(await check('switch', 'switch'))['space-toggles'], true);
     assert.equal(byId(await check('radios', 'radio'))['arrows-select'], true);
   } finally { await close(); }
+});
+
+test('composite widgets with roving tabindex are one Tab stop', { skip }, async () => {
+  const { check, close } = await setup();
+  try { const r = await check('tabs', 'tabs'); assert.equal(byId(r)['tab-reach'], true, JSON.stringify(r)); } finally { await close(); }
+});
+
+test('a focus ring drawn on a pseudo-element counts as visible focus', { skip }, async () => {
+  const { check, close } = await setup();
+  try { const r = await check('pseudo-ring', null); assert.equal(byId(r)['focus-visible'], true, JSON.stringify(r)); } finally { await close(); }
+});
+
+test('radio names with quotes do not break the checks, and unnamed radios are separate stops', { skip }, async () => {
+  const { check, close } = await setup();
+  try {
+    const r = await check('odd-radio-names', null);
+    assert.ok(!r.some((x) => x.id === 'error'), JSON.stringify(r));
+    assert.equal(byId(r)['tab-reach'], true, JSON.stringify(r));
+    assert.match(r.find((x) => x.id === 'tab-reach').detail, /^3 reached/);
+  } finally { await close(); }
+});
+
+test('a dialog that opens with focus on its close button is judged against the button at rest', { skip }, async () => {
+  const { check, close } = await setup();
+  try { assert.equal(byId(await check('opens-focused', null))['focus-visible'], true); } finally { await close(); }
 });

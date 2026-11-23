@@ -48,3 +48,21 @@ test('waits for the file when the preview has not started yet', async () => {
   assert.equal(await f.done, 0);
   assert.deepEqual(f.lines().map((e) => e.event), ['ready', 'stopped']);
 });
+
+test('with --run, an old preview\'s events are ignored until this run\'s events arrive', async () => {
+  const { root, file } = project();
+  add(file, { event: 'ready', run: 'old' }); add(file, { event: 'comment', run: 'old', id: 'c9' }); add(file, { event: 'stopped', run: 'old' });
+  const f = follow(root, '--run', 'new');
+  await sleep(500);
+  fs.writeFileSync(file, ''); add(file, { event: 'ready', run: 'new' }); add(file, { event: 'comment', run: 'new', id: 'c1' }); add(file, { event: 'stopped', run: 'new' });
+  assert.equal(await f.done, 0);
+  assert.deepEqual(f.lines().map((e) => [e.event, e.run]), [['ready', 'new'], ['comment', 'new'], ['stopped', 'new']]);
+});
+
+test('a re-armed watch on a file a new preview replaced starts that preview from its first event', async () => {
+  const { root, file } = project();
+  add(file, { event: 'ready', run: 'b' }); add(file, { event: 'comment', run: 'b', id: 'c1' }); add(file, { event: 'stopped', run: 'b' });
+  const f = follow(root, '--run', 'a', '--from', '3');
+  assert.equal(await f.done, 0);
+  assert.deepEqual(f.lines().map((e) => e.event), ['replaced']);
+});

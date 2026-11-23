@@ -69,3 +69,18 @@ test('200% text doubles the project\'s own root size instead of replacing it', {
     assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), '20px');
   } finally { await browser.close(); }
 });
+
+test('a state tag with nothing to act on fails quickly with a clear message', { skip }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reax-cap-'));
+  fs.writeFileSync(path.join(dir, 'iframe.html'), '<!doctype html><body class="sb-show-main"><div id="storybook-root"><p>Just text</p></div></body>');
+  const server = await serveStatic(dir);
+  const { chromium: pw } = req('playwright'); const { AxeBuilder } = req('@axe-core/playwright');
+  const browser = await pw.launch({ executablePath: chromium, args: ['--no-sandbox'] });
+  try {
+    const t0 = Date.now();
+    const r = await capture({ browser, baseUrl: server.url, story: { id: 'x', tags: ['reax-state-hover'] }, vp: { name: 'm', width: 390, height: 200 }, config: mergeConfig({}), AxeBuilder });
+    assert.equal(r.status, 'could-not-run');
+    assert.match(r.error, /data-reax-target/);
+    assert.ok(Date.now() - t0 < 15000);
+  } finally { await browser.close(); await server.close(); }
+});

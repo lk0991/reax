@@ -60,9 +60,11 @@ const TARGET = '[data-reax-target], #storybook-root button, #storybook-root a[hr
 /** Put the story's target element into the state with real pointer and keyboard input, so CSS pseudo-classes apply. */
 async function enterState(page, state) {
   const target = page.locator(TARGET).first();
-  if (state === 'hover') await target.hover();
-  if (state === 'pressed') { await target.hover(); await page.mouse.down(); }
-  if (state === 'focus') { await page.keyboard.press('Shift'); await target.focus(); }
+  if (!(await target.count())) throw new Error(`The story's reax-state-${state} tag has no element to act on. Mark one with data-reax-target.`);
+  const opts = { timeout: 5000 };
+  if (state === 'hover') await target.hover(opts);
+  if (state === 'pressed') { await target.hover(opts); await page.mouse.down(); }
+  if (state === 'focus') { await page.keyboard.press('Shift'); await target.focus(opts); }
 }
 
 /** The page-side rule for larger text, shared with the preview: multiply the project's own root font size, the way a
@@ -107,7 +109,7 @@ export async function keyboardCapture({ browser, baseUrl, story, vp, config, che
     await settle(page);
     return await runChecks(page, checks);
   } catch (e) {
-    return [{ id: 'error', ok: null, detail: `the checks could not run: ${String(e.message || e).split('\n')[0]}` }];
+    return [{ id: 'error', ok: null, error: true, detail: `the checks could not run: ${String(e.message || e).split('\n')[0]}` }];
   } finally { await context.close(); }
 }
 
@@ -141,6 +143,7 @@ export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder 
       shot = b; stable = a.equals(b); if (!stable) await sleep(200);
     }
     result.buffer = shot; result.unstable = !stable;
+    if (state === 'pressed') await page.mouse.up(); // axe and the overflow check see the page at rest
 
     const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
     result.overflow = dims.sw > dims.cw + 1 ? { scrollWidth: dims.sw, clientWidth: dims.cw } : null;

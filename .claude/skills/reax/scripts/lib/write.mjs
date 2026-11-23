@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { req } from './runtime.mjs';
-import { canonicalSection, SPEC_SECTIONS, REAX_SECTIONS, currentHashes, diffText } from './design.mjs';
+import { canonicalSection, SPEC_SECTIONS, REAX_SECTIONS, currentHashes, diffText, HASH_VERSION } from './design.mjs';
 
 const HUMAN_OWNED = new Set(['Overview', "Do's and Don'ts"]);
 
@@ -63,7 +63,7 @@ export function composeDesignMarkdown(draft, existing = null) {
 
 export function composeSidecar(root, draft) {
   const scan = { ...(draft.scan || {}), scannedAt: new Date().toISOString() };
-  scan.hashes = currentHashes(root, scan);
+  scan.hashes = currentHashes(root, scan); scan.hashVersion = HASH_VERSION;
   return { schemaVersion: 1, scan, tokenSources: draft.sidecar?.tokenSources || {}, language: draft.sidecar?.language || {}, inventory: draft.sidecar?.inventory || [], shadows: draft.sidecar?.shadows || {}, themes: draft.sidecar?.themes || [] };
 }
 

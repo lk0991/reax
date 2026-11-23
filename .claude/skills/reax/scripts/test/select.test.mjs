@@ -56,3 +56,12 @@ test('on the base branch itself, only uncommitted changes count', () => {
   const s = selectStories({ root, config, args: {}, all: stories });
   assert.equal(s.stories.length, 0);
 });
+
+test('when the branch cannot be compared with its base, it says so instead of claiming it did', () => {
+  const root = repo();
+  git(root, 'checkout', '-q', '--orphan', 'unrelated');
+  write(root, 'src/components/Button/Button.tsx', 'c'); git(root, 'add', '.'); git(root, 'commit', '-qm', 'unrelated');
+  const s = selectStories({ root, config, args: {}, all: stories });
+  assert.match(s.description, /could not compare with main/);
+  assert.doesNotMatch(s.description, /since main/);
+});

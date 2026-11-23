@@ -11,7 +11,8 @@
 //                                                       the person's own hosting when they cannot reach this machine (no tests run)
 //   options: --root <dir>  --force (with --approve)
 //
-// Exit code: 0 when nothing blocks; 1 for axe serious/critical findings, a story that could not run, or a failed run.
+// Exit code: 0 when nothing blocks; 1 for axe serious/critical findings, a failed keyboard check, a story that could not
+// run, or a failed run.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -157,9 +158,13 @@ async function run() {
   fs.writeFileSync(path.join(reportDir, 'report.md'), renderReport(runJson));
   const gallery = renderGallery(runJson);
   fs.writeFileSync(path.join(reportDir, 'gallery.html'), gallery.html);
+  // can the page and its screenshots go out in one publish? (count, total size and size of each file)
+  const sizes = gallery.files.map((f) => fs.statSync(path.join(reportDir, f)).size);
+  const galleryBytes = sizes.reduce((n, b) => n + b, 0) + Buffer.byteLength(gallery.html);
+  const galleryFits = gallery.files.length + 1 <= PUBLISH_LIMITS.files && galleryBytes <= PUBLISH_LIMITS.bytes && sizes.every((b) => b <= PUBLISH_LIMITS.fileBytes);
   const reach = previewReach();
   console.log(JSON.stringify({ ok: exitCode === 0, ...summary, report: path.relative(root, path.join(reportDir, 'report.md')), run: path.relative(root, path.join(reportDir, 'run.json')),
-    gallery: { page: path.relative(root, path.join(reportDir, 'gallery.html')), files: gallery.files.length, fits: gallery.files.length < PUBLISH_LIMITS.files }, previewReachable: reach.local, ...(reach.local ? {} : { previewUnreachableBecause: reach.reason }), exitCode }, null, 2));
+    gallery: { page: path.relative(root, path.join(reportDir, 'gallery.html')), files: gallery.files.length, bytes: galleryBytes, fits: galleryFits }, previewReachable: reach.local, ...(reach.local ? {} : { previewUnreachableBecause: reach.reason }), exitCode }, null, 2));
   process.exit(exitCode);
 }
 
@@ -193,6 +198,7 @@ function assemble(story, results, keyboard = { card: null, results: [] }) {
   if (axe.length > blocking.length) { warning = true; reasons.push(`${axe.length - blocking.length} other accessibility finding${axe.length - blocking.length > 1 ? 's' : ''}`); }
   const brokenKeys = keyboard.results.filter((r) => r.ok === false && !r.default);
   if (brokenKeys.length) { failure = true; reasons.push(`keyboard: ${brokenKeys.map((r) => r.id).join(', ')}`); }
+  if (keyboard.results.some((r) => r.error)) { warning = true; reasons.push('keyboard checks could not run'); }
   const missedDefaults = keyboard.results.filter((r) => r.ok === false && r.default);
   if (missedDefaults.length) { warning = true; reasons.push(`keyboard default not met: ${missedDefaults.map((r) => r.id).join(', ')}`); }
   const textScale = [...textMap.values()]; if (textScale.length) { warning = true; reasons.push(`${textScale.length} text size${textScale.length > 1 ? 's' : ''} ignore the 200% setting`); }

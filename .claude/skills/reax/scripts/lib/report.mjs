@@ -49,7 +49,7 @@ export function renderReport(run) {
   const withKeys = run.stories.filter((s) => (s.keyboard || []).length);
   if (!withKeys.length) out('Not run.'); else {
     out('| Story | Card | Check | Result | Detail |'); out('| --- | --- | --- | --- | --- |');
-    for (const s of withKeys) for (const k of s.keyboard) out(`| ${esc(s.title)} / ${esc(s.name)} | ${s.card || '-'} | \`${k.id}\`${k.rule ? ` (${esc(k.rule)})` : ''} | ${k.ok === false ? (k.default ? 'Warning (a Default)' : '**Fails**') : k.ok ? 'Pass' : 'Not applicable'} | ${esc(k.detail || '')} |`);
+    for (const s of withKeys) for (const k of s.keyboard) out(`| ${esc(s.title)} / ${esc(s.name)} | ${s.card || '-'} | \`${k.id}\`${k.rule ? ` (${esc(k.rule)})` : ''} | ${k.error ? '**Could not run**' : k.ok === false ? (k.default ? 'Warning (a Default)' : '**Fails**') : k.ok ? 'Pass' : 'Not applicable'} | ${esc(k.detail || '')} |`);
   }
   out();
 

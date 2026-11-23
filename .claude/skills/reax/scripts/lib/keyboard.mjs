@@ -27,45 +27,60 @@ export const CHECK_INFO = {
 
 const pause = (page, ms = 150) => page.waitForTimeout(ms);
 
-/** Mark the elements that must be reachable with Tab, in markup order, and return their names. */
+/** Find the Tab stops, in markup order, and remember each candidate element's resting look. A Tab stop is one
+ * element, or one group: a native radio group (same non-empty name), or a composite widget (tablist, radiogroup,
+ * menu, menubar, listbox, tree, grid, toolbar) that uses roving tabindex or aria-activedescendant. Page state lives
+ * on window.__reaxKb so names never pass through a CSS selector. */
 const markTargets = (page) => page.evaluate(() => {
+  document.activeElement?.blur?.(); // record every resting look unfocused (a modal dialog focuses its first control)
   const root = document.querySelector('#storybook-root') || document.body;
   const modal = [...root.querySelectorAll('dialog[open]')].find((d) => d.matches(':modal'));
   const scope = modal || root;
-  const SEL = 'button, a[href], input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex="-1"]), [role=button], [role=link], [role=checkbox], [role=switch], [role=tab], [role=menuitem], [role=radio], [role=option], [role=combobox]';
+  const SEL = 'button, a[href], input:not([type=hidden]), select, textarea, summary, [tabindex], [role=button], [role=link], [role=checkbox], [role=switch], [role=tab], [role=menuitem], [role=menuitemcheckbox], [role=menuitemradio], [role=radio], [role=option], [role=combobox], [role=treeitem], [role=gridcell]';
+  const COMPOSITE = '[role=tablist], [role=radiogroup], [role=menu], [role=menubar], [role=listbox], [role=tree], [role=grid], [role=toolbar]';
   const name = (el) => (el.getAttribute('aria-label') || el.textContent || el.getAttribute('value') || el.tagName.toLowerCase()).trim().replace(/\s+/g, ' ').slice(0, 40) || el.tagName.toLowerCase();
-  const seenGroups = new Set(); const out = [];
+  const look = (el) => {
+    const parts = [el, ...['::before', '::after'].map((p) => [el, p])].map((x) => {
+      const cs = Array.isArray(x) ? getComputedStyle(x[0], x[1]) : getComputedStyle(x);
+      return [cs.content, cs.outlineStyle, cs.outlineWidth, cs.outlineColor, cs.outlineOffset, cs.boxShadow, cs.borderColor, cs.borderWidth, cs.backgroundColor, cs.color, cs.textDecorationLine, cs.transform].join('|');
+    });
+    return parts.join('#');
+  };
+  const stops = []; const groupOf = new Map(); const rest = new Map();
   for (const el of scope.querySelectorAll(SEL)) {
     if (el.disabled || el.closest('[inert], dialog:not([open]), [hidden]') || !el.getClientRects().length) continue;
-    if (el.matches('input[type=radio]')) { // a radio group is one stop
-      if (seenGroups.has(el.name)) continue; seenGroups.add(el.name);
-    }
-    el.setAttribute('data-reax-kb', String(out.length)); out.push(el.matches('input[type=radio]') ? `radio group "${el.name}"` : name(el));
+    const composite = el.closest(COMPOSITE);
+    const radioName = el.matches('input[type=radio]') && el.name ? el.name : null;
+    const key = composite || (radioName !== null ? `radio:${radioName}` : null);
+    if (!composite && el.getAttribute('tabindex') === '-1') continue; // not meant to be a Tab stop
+    rest.set(el, look(el));
+    if (key !== null && groupOf.has(key)) { stops[groupOf.get(key)].members.add(el); continue; }
+    const label = composite ? `${composite.getAttribute('role')} "${(composite.getAttribute('aria-label') || name(el))}"` : radioName !== null ? `radio group "${radioName}"` : name(el);
+    if (key !== null) groupOf.set(key, stops.length);
+    stops.push({ label, members: new Set([el]), container: composite });
   }
-  document.activeElement?.blur?.();
-  return out;
+  window.__reaxKb = { stops, rest, look };
+  return stops.map((st) => st.label);
 });
 
+/** Which stop the focused element belongs to, and whether it looks different from its own resting state. */
 const focusStyle = (page) => page.evaluate(() => {
-  const el = document.activeElement; if (!el || el === document.body) return null;
-  const k = el.closest('[data-reax-kb]') || el; const cs = getComputedStyle(el);
-  const radioGroup = el.matches('input[type=radio]') ? document.querySelector(`input[type=radio][name="${el.name}"][data-reax-kb]`) : null;
-  return { index: (radioGroup || k).getAttribute('data-reax-kb'), sig: [cs.outlineStyle, cs.outlineWidth, cs.outlineColor, cs.boxShadow, cs.borderColor, cs.backgroundColor, cs.textDecorationLine].join('|') };
+  const kb = window.__reaxKb; const el = document.activeElement;
+  if (!kb || !el || el === document.body) return null;
+  const index = kb.stops.findIndex((st) => st.members.has(el) || (st.container && st.container.contains(el)));
+  if (index < 0) return { index: null };
+  const before = kb.rest.get(el);
+  return { index: String(index), changed: before === undefined || before !== kb.look(el) };
 });
-
-const restStyles = (page) => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-reax-kb]')].map((el) => {
-  const cs = getComputedStyle(el); return [el.getAttribute('data-reax-kb'), [cs.outlineStyle, cs.outlineWidth, cs.outlineColor, cs.boxShadow, cs.borderColor, cs.backgroundColor, cs.textDecorationLine].join('|')];
-})));
 
 async function tabChecks(page) {
   const names = await markTargets(page);
   if (!names.length) return [{ id: 'tab-reach', ok: null, detail: 'no interactive element' }, { id: 'focus-visible', ok: null, detail: 'no interactive element' }];
-  const rest = await restStyles(page);
   const reached = new Set(); const noRing = new Set();
   for (let i = 0; i < names.length * 2 + 2; i++) {
     await page.keyboard.press('Tab');
     const f = await focusStyle(page); if (!f || f.index === null) continue;
-    reached.add(f.index); if (f.sig === rest[f.index]) noRing.add(f.index); else noRing.delete(f.index);
+    reached.add(f.index); if (!f.changed) noRing.add(f.index); else noRing.delete(f.index);
   }
   const missed = names.filter((_, i) => !reached.has(String(i)));
   const plain = [...noRing].map((i) => names[Number(i)]);
@@ -133,7 +148,7 @@ export async function runChecks(page, ids) {
     if (ids.includes('arrows-select')) out.push(await arrowsSelect(page));
     if (ids.some((i) => i.startsWith('dialog-'))) out.push(...(await dialogChecks(page)).filter((r) => ids.includes(r.id)));
   } catch (e) {
-    out.push({ id: 'error', ok: null, detail: `the checks could not finish: ${String(e.message).split('\n')[0]}` });
+    out.push({ id: 'error', ok: null, error: true, detail: `the checks could not finish: ${String(e.message).split('\n')[0]}` });
   }
   return out;
 }

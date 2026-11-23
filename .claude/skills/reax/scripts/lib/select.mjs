@@ -21,13 +21,14 @@ export function changedFiles(root, { base: configured } = {}) {
   const st = run(root, 'status', '--porcelain', '-uall');
   if (st.status !== 0) return null;
   const files = st.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).replace(/^"|"$/g, '').split(' -> ').pop());
-  const base = baseBranch(root, configured);
+  let base = baseBranch(root, configured); let uncomparable = null;
   if (base) {
     const d = run(root, 'diff', '--name-only', `${base}...HEAD`);
     if (d.status === 0) files.push(...d.stdout.split('\n').filter(Boolean));
+    else { uncomparable = base; base = null; } // a shallow clone or unrelated history: no merge base
   }
   const list = [...new Set(files)].map((f) => path.relative(root, path.join(top.stdout.trim(), f)).split(path.sep).join('/')).filter((f) => !f.startsWith('..') && !f.startsWith('visual-report/') && !f.startsWith('.reax/baselines/'));
-  return Object.assign(list, { base });
+  return Object.assign(list, { base, uncomparable });
 }
 
 /** @returns {{mode: string, stories: object[], description: string}} */
@@ -44,7 +45,9 @@ export function selectStories({ root, config, args, all }) {
     return { mode: 'component', stories, description: stories.length ? `components: ${args.component}${suffix}` : `No story matches ${args.component}.` };
   }
   const changed = changedFiles(root, { base: config.baseBranch });
-  const since = changed?.base ? `on this branch since ${changed.base}, and uncommitted` : 'uncommitted (no base branch found to compare with)';
+  const since = changed?.base ? `on this branch since ${changed.base}, and uncommitted`
+    : changed?.uncomparable ? `uncommitted only (could not compare with ${changed.uncomparable}: no merge base, for example in a shallow clone; use --all or --component)`
+    : 'uncommitted (no base branch found to compare with)';
   if (changed === null) return { mode: 'all', stories: eligible, description: `all stories, because this is not a git repository${suffix}` };
   const sidecar = readJson(path.join(root, '.reax', 'design.json'), {});
   const global = changed.some((f) => f.startsWith('.storybook/') || (sidecar.scan?.tokenFiles || []).includes(f));

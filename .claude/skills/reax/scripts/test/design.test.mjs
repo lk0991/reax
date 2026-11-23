@@ -188,3 +188,16 @@ test('a root given as a relative path and as an absolute path hash the same', ()
   try { process.chdir(root); planWrite('.', DRAFT, { apply: true }); } finally { process.chdir(cwd); }
   assert.equal(loadDesign(root, { root }).stale.stale, false);
 });
+
+test('a sidecar whose hashes predate the current scheme is not reported as drift', () => {
+  const root = tmp(); fs.writeFileSync(path.join(root, 'tokens.css'), ':root{--color-primary:#1f4f9a}');
+  planWrite(root, DRAFT, { apply: true });
+  const file = path.join(root, '.reax', 'design.json');
+  const side = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(side.scan.hashVersion, 2);
+  delete side.scan.hashVersion; side.scan.hashes = { tokens: 'old-content-hash', components: 'old-content-hash' };
+  fs.writeFileSync(file, JSON.stringify(side));
+  const d = loadDesign(root, { root });
+  assert.equal(d.stale.stale, false);
+  assert.ok(d.warnings.some((w) => w.kind === 'hash-version'));
+});
