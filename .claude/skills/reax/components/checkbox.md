@@ -36,6 +36,11 @@ unchecked, checked, indeterminate, disabled (both values), error, focus-visible,
 ## Defaults
 - The target is the whole label row.
 
+
+## Keyboard checks
+Run by `visual-test`, besides the shared checks in `_rules.md`.
+- `space-toggles`: Space changes the checked state (2.1.1).
+
 ## Mobile
 The row is full width and wraps. Spacing between rows keeps targets from touching.
 

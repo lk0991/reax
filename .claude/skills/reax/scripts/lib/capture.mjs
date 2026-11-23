@@ -13,6 +13,7 @@ export const DEFAULTS = {
   axe: { tags: ['wcag2a', 'wcag2aa', 'wcag22aa', 'best-practice'], disabledRules: [], blockingImpacts: ['serious', 'critical'] },
   skipTag: 'reax-skip',
   baseBranch: null,
+  keyboard: true,
   concurrency: 4,
   storyTimeoutMs: 30_000,
   stabilityAttempts: 3,
@@ -76,19 +77,38 @@ const measureText = (page) => page.evaluate(() => {
   return out;
 });
 
+/** Open a story in its frame and wait until it has rendered and its play function has finished. Throws if it errors. */
+export async function openStory(page, baseUrl, story, config) {
+  await page.goto(`${baseUrl}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, { timeout: config.storyTimeoutMs, waitUntil: 'load' });
+  await page.waitForFunction(() => document.body.classList.contains('sb-show-main') || document.body.classList.contains('sb-show-errordisplay'), null, { timeout: config.storyTimeoutMs });
+  if (await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay'))) {
+    const msg = await page.evaluate(() => (document.querySelector('.sb-errordisplay_main, #error-message') || document.body).innerText.slice(0, 600));
+    throw Object.assign(new Error(msg.trim() || 'The story threw while rendering.'), { storyError: true });
+  }
+  await waitForPlay(page, config.storyTimeoutMs);
+}
+
+/** Run a story's keyboard and focus checks once, at the first viewport, with animations off. */
+export async function keyboardCapture({ browser, baseUrl, story, vp, config, checks, runChecks }) {
+  const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await openStory(page, baseUrl, story, config);
+    await page.addStyleTag({ content: ANIM_OFF });
+    await settle(page);
+    return await runChecks(page, checks);
+  } catch (e) {
+    return [{ id: 'error', ok: null, detail: `the checks could not run: ${String(e.message || e).split('\n')[0]}` }];
+  } finally { await context.close(); }
+}
+
 /** Take one capture. Never throws for a problem with the story: it returns { status: 'could-not-run', error }. */
 export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder }) {
   const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce', colorScheme: 'light' });
   const page = await context.newPage();
   const result = { viewport: vp.name, status: 'ok', unstable: false, buffer: null, axe: [], textScale: [], overflow: null, error: null };
   try {
-    await page.goto(`${baseUrl}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, { timeout: config.storyTimeoutMs, waitUntil: 'load' });
-    await page.waitForFunction(() => document.body.classList.contains('sb-show-main') || document.body.classList.contains('sb-show-errordisplay'), null, { timeout: config.storyTimeoutMs });
-    if (await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay'))) {
-      const msg = await page.evaluate(() => (document.querySelector('.sb-errordisplay_main, #error-message') || document.body).innerText.slice(0, 600));
-      throw Object.assign(new Error(msg.trim() || 'The story threw while rendering.'), { storyError: true });
-    }
-    await waitForPlay(page, config.storyTimeoutMs);
+    await openStory(page, baseUrl, story, config);
     await page.addStyleTag({ content: ANIM_OFF });
     await settle(page);
 

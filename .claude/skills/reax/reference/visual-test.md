@@ -14,9 +14,9 @@ Run the visual and accessibility tests on Storybook stories, review the screensh
 node scripts/visual-test.mjs --root <project> [--component Button,Input | --all]
 ```
 
-By default it tests the components changed on this branch since it left the base branch (the remote's default branch, or `main` or `master`; set `baseBranch` in `.reax/visual-test.json` to choose), plus uncommitted changes. With no base branch it uses uncommitted changes only and says so. `--component` names them, `--all` runs every story, a story tagged `reax-skip` is left out. It builds Storybook statically into a temp folder (rebuilding only when sources changed), waits for each story's `play` function, puts tagged stories into their hover, pressed or focus state, takes four captures per story (390×844, 1280×800, 320px reflow, 390 wide with 200% text), runs axe on each, and compares with baselines in `.reax/baselines/`. Widths pinned in the preview are added. Optional settings are in `.reax/visual-test.json` (below).
+By default it tests the components changed on this branch since it left the base branch (the remote's default branch, or `main` or `master`; set `baseBranch` in `.reax/visual-test.json` to choose), plus uncommitted changes. With no base branch it uses uncommitted changes only and says so. `--component` names them, `--all` runs every story, a story tagged `reax-skip` is left out. It builds Storybook statically into a temp folder (rebuilding only when sources changed), waits for each story's `play` function, puts tagged stories into their hover, pressed or focus state, takes four captures per story (390×844, 1280×800, 320px reflow, 390 wide with 200% text), runs axe on each, runs the keyboard and focus checks the component's card names (once per story, see `_rules.md` and the card's "Keyboard checks"), and compares with baselines in `.reax/baselines/`. Widths pinned in the preview are added. Optional settings are in `.reax/visual-test.json` (below).
 
-The script prints a JSON summary and writes `visual-report/report.md` and `run.json`. Exit code 1 means blocking axe findings (serious, critical), a story that could not run, or a failed run. Warnings (sideways scroll, text that ignores 200%, a baseline diff over 0.1%, an unstable capture) do not fail the run. A first run with no baselines fails nothing. A run whose scope has no stories prints `"result": "nothing-tested"`: report that nothing was tested, never that it passed, and offer `--all` or `--component`.
+The script prints a JSON summary and writes `visual-report/report.md` and `run.json`. Exit code 1 means blocking axe findings (serious, critical), a failed keyboard check, a story that could not run, or a failed run. Warnings (sideways scroll, text that ignores 200%, a baseline diff over 0.1%, an unstable capture) do not fail the run. A first run with no baselines fails nothing. A run whose scope has no stories prints `"result": "nothing-tested"`: report that nothing was tested, never that it passed, and offer `--all` or `--component`.
 
 If the run could not start (build failed, no stories), report Storybook's last lines. Do not retry in a loop.
 
@@ -33,6 +33,7 @@ If the run could not start (build failed, no stories), report Storybook's last l
 | `axe.blockingImpacts` | `serious`, `critical` | Impacts that fail the run. |
 | `skipTag` | `reax-skip` | Stories with this tag are left out. |
 | `baseBranch` | the remote's default, else `main` or `master` | The branch the default scope compares with. |
+| `keyboard` | `true` | Run the keyboard and focus checks. `false` skips them, and the report says so. |
 | `concurrency` | `4` | Captures taken in parallel. |
 | `storyTimeoutMs` | `30000` | How long a story may take to render. |
 | `stabilityAttempts` | `3` | Tries for a screenshot that matches itself. |

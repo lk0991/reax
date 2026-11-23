@@ -39,6 +39,11 @@ none selected, one selected, option disabled, group disabled, error, required, l
 - Use native inputs; do not reimplement the keyboard behaviour.
 - Prefer a `select` when there are more than about six options.
 
+
+## Keyboard checks
+Run by `visual-test`, besides the shared checks in `_rules.md`.
+- `arrows-select`: ArrowDown moves to the next radio and selects it (2.1.1).
+
 ## Mobile
 Vertical by default. Horizontal wraps rather than scrolls.
 

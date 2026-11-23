@@ -27,6 +27,13 @@ Request, then project (`DESIGN.md`, existing components, token files), then card
 - Respect `prefers-reduced-motion`.
 - A checkbox or radio target is the whole label row. Targets go above 24px only when `DESIGN.md` states a size.
 
+## Keyboard checks
+
+`visual-test` runs these on every story, with real key presses, once at the first viewport. A card adds its own in its "Keyboard checks" section. A failed check fails the run.
+
+- `tab-reach`: Tab reaches every interactive element (a radio group counts once) (2.1.1).
+- `focus-visible`: every element Tab reaches looks different when focused (2.4.7).
+
 ## Code
 
 - React and TypeScript. Typed props with JSDoc on every prop. One component per file. Spread the remaining native props onto the root element. Forward `ref` to the main element.

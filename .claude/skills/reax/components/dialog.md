@@ -47,6 +47,13 @@ closed, open, open with long scrolling body, alertdialog (destructive), fullscre
 - Tab wraps inside the dialog. A native `<dialog>` lets focus move on to the browser's own controls; that is acceptable, and a custom focus trap is only added if the project asks.
 - Page scroll is locked behind it.
 
+
+## Keyboard checks
+Run by `visual-test` on every dialog story, besides the shared checks in `_rules.md`. The trigger is the element marked `data-reax-target` or `data-slot="trigger"`, or the first button outside the dialog.
+- `dialog-focus-in`: Enter on the trigger opens the dialog and focus moves inside (2.4.3).
+- `dialog-esc`: Esc closes it (a Default: only warns).
+- `dialog-focus-return`: after closing, focus is back on the trigger (2.4.3).
+
 ## Mobile
 Fullscreen below the mobile breakpoint. Footer actions stack, primary first in reading order. No sideways scroll at 320px.
 

@@ -36,6 +36,11 @@ off, on, disabled off, disabled on, focus-visible, loading, long label, 320px, 2
 - The whole row is the target, and the track is at least 24px tall.
 - The effect is immediate. If it cannot be, use a checkbox.
 
+
+## Keyboard checks
+Run by `visual-test`, besides the shared checks in `_rules.md`.
+- `space-toggles`: Space changes the checked state (2.1.1).
+
 ## Mobile
 Row full width, label wraps, track keeps its size.
 

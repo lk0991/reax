@@ -17,7 +17,9 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, req, missing, chromiumPath, findUp, readJson, writeJson } from './lib/runtime.mjs';
-import { mergeConfig, capture } from './lib/capture.mjs';
+import { mergeConfig, capture, keyboardCapture } from './lib/capture.mjs';
+import { runChecks, checksFor, CHECK_INFO } from './lib/keyboard.mjs';
+import { cardFor } from './lib/cards.mjs';
 import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
 import { selectStories as select } from './lib/select.mjs';
@@ -131,9 +133,22 @@ async function run() {
     }
   };
   await Promise.all(Array.from({ length: Math.min(config.concurrency, tasks.length) }, worker));
+
+  // keyboard and focus checks: once per story, at the first viewport, with the checks its card names
+  const sidecar = readJson(path.join(root, '.reax', 'design.json'), {});
+  const keyboard = new Map(); let kNext = 0;
+  const kWorker = async () => {
+    for (;;) {
+      const i = kNext++; if (i >= scope.stories.length) return;
+      const story = scope.stories[i]; const card = cardFor(story.title, sidecar);
+      const results = await keyboardCapture({ browser, baseUrl: server.url, story, vp: config.viewports[0], config, checks: checksFor(card), runChecks });
+      keyboard.set(story.id, { card, results: results.map((r) => ({ ...r, ...(CHECK_INFO[r.id] || {}) })) });
+    }
+  };
+  if (config.keyboard !== false) { log('Running keyboard and focus checks.'); await Promise.all(Array.from({ length: Math.min(config.concurrency, scope.stories.length) }, kWorker)); }
   await browser.close(); await server.close();
 
-  const stories = scope.stories.map((story) => assemble(story, results));
+  const stories = scope.stories.map((story) => assemble(story, results, keyboard.get(story.id)));
   const summary = { total: stories.length, pass: stories.filter((s) => s.result === 'pass').length, warning: stories.filter((s) => s.result === 'warning').length, failure: stories.filter((s) => s.result === 'failure').length };
   const exitCode = summary.failure ? 1 : 0;
   const runJson = { startedAt, durationMs: Date.now() - t0, root, storybook: { version: sb.version }, scope: { description: scope.description, mode: scope.mode }, config: { viewports: config.viewports, diffThreshold: config.diffThreshold, axe: config.axe }, stories, summary, exitCode };
@@ -144,7 +159,7 @@ async function run() {
 }
 
 /* ---------- turning captures into a story result ---------- */
-function assemble(story, results) {
+function assemble(story, results, keyboard = { card: null, results: [] }) {
   const captures = []; const axeMap = new Map(); const textMap = new Map(); const reasons = []; let failure = false; let warning = false;
   for (const vp of config.viewports) {
     const r = results.get(`${story.id}|${vp.name}`);
@@ -171,6 +186,10 @@ function assemble(story, results) {
   const blocking = axe.filter((f) => config.axe.blockingImpacts.includes(f.impact));
   if (blocking.length) { failure = true; reasons.push(`${blocking.length} blocking accessibility finding${blocking.length > 1 ? 's' : ''}`); }
   if (axe.length > blocking.length) { warning = true; reasons.push(`${axe.length - blocking.length} other accessibility finding${axe.length - blocking.length > 1 ? 's' : ''}`); }
+  const brokenKeys = keyboard.results.filter((r) => r.ok === false && !r.default);
+  if (brokenKeys.length) { failure = true; reasons.push(`keyboard: ${brokenKeys.map((r) => r.id).join(', ')}`); }
+  const missedDefaults = keyboard.results.filter((r) => r.ok === false && r.default);
+  if (missedDefaults.length) { warning = true; reasons.push(`keyboard default not met: ${missedDefaults.map((r) => r.id).join(', ')}`); }
   const textScale = [...textMap.values()]; if (textScale.length) { warning = true; reasons.push(`${textScale.length} text size${textScale.length > 1 ? 's' : ''} ignore the 200% setting`); }
-  return { id: story.id, title: story.title, name: story.name, importPath: story.importPath, captures, axe, textScale, result: failure ? 'failure' : warning ? 'warning' : 'pass', reasons: [...new Set(reasons)] };
+  return { id: story.id, title: story.title, name: story.name, importPath: story.importPath, card: keyboard.card, keyboard: keyboard.results, captures, axe, textScale, result: failure ? 'failure' : warning ? 'warning' : 'pass', reasons: [...new Set(reasons)] };
 }
