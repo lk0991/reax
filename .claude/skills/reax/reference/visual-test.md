@@ -75,11 +75,12 @@ node scripts/visual-test.mjs --root <project> --preview [--component Name]
 
 Opens on the component just built or changed. Offer it after the run. To start it:
 
-1. Run the command as a **background command** and keep reading its output. It prints one JSON object per line on stdout: `ready` first (with `url`), then `comment` and `apply` events. Everything else is on stderr.
-2. Give the person the `url` from the `ready` line. It is on 127.0.0.1, with a token in the address.
-3. It reuses a running Storybook if you pass `--storybook-url <url>`. On failure it prints Storybook's last 20 lines and exits.
-4. Tell the person the four modes in a line: **Test** (use the component, resize, 200% text, "Find narrowest width"), **Comment** (click an element, write a note, "Save and send to Claude"), **Anatomy** (numbered parts, props, tokens, accessibility), **Edit** (change text and token values as a draft, then Apply).
-5. When you stop, stop the background command so Storybook's process group exits.
+1. Run the command as a **background command**. It prints one JSON object per line on stdout (`ready` first, with `url`, then `comment` and `apply` events, and `stopped` when it exits), and appends the same lines to `visual-report/preview-events.jsonl`. Everything else is on stderr.
+2. Once `ready` is out, **watch the events so each one wakes you**, without the person having to type. With a watcher tool (Monitor in Claude Code), watch `node scripts/preview-events.mjs --root <project>`: each event arrives as one line with its `line` number, and the command ends after `stopped`. A watch expires (Monitor: at most 30 minutes); when it does, re-arm it with `--from <last line you handled + 1>`, so nothing is missed or repeated. Without a watcher tool, tell the person to say "check the preview" in chat after sending, and then read the events file from the last line you handled.
+3. Give the person the `url` from the `ready` line. It is on 127.0.0.1, with a token in the address. If the person's browser is not on this machine, see "When the person cannot reach this machine" below.
+4. It reuses a running Storybook if you pass `--storybook-url <url>`. On failure it prints Storybook's last 20 lines and exits.
+5. Tell the person the four modes in a line: **Test** (use the component, resize, 200% text, "Find narrowest width"), **Comment** (click an element, write a note, "Save and send to Claude"), **Anatomy** (numbered parts, props, tokens, accessibility), **Edit** (change text and token values as a draft, then Apply).
+6. When you stop, stop the background command so Storybook's process group exits. The helper writes `stopped`, which ends the watch.
 
 ### Handling events
 

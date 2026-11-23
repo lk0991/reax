@@ -7,8 +7,10 @@
 //   node preview.mjs --story <id>             open on one story
 //   options: --root <dir>  --port <n>  --storybook-url <url>  (reuse a Storybook that is already running)
 //
-// Output: stdout carries one JSON object per line and nothing else, so Claude can monitor it:
+// Output: stdout carries one JSON object per line and nothing else, and the same lines go to
+// visual-report/preview-events.jsonl (follow it with preview-events.mjs):
 //   {"event":"ready","url":...}   {"event":"comment",...} (a comment "sent")   {"event":"apply",...} (an edit set sent)
+//   {"event":"stopped"} on exit, {"event":"error",...} when it cannot start
 // Progress and Storybook's own output go to stderr. The page lives under /__reax/, Storybook at the address root.
 import fs from 'node:fs';
 import http from 'node:http';
@@ -26,7 +28,11 @@ const args = parseArgs(process.argv.slice(2));
 const root = findUp(path.resolve(args.root || process.cwd()), ['package.json']) || path.resolve(args.root || process.cwd());
 const outDir = path.join(root, 'visual-report');
 const log = (m) => console.error(m);
-const emit = (o) => console.log(JSON.stringify(o));
+// every event also goes to visual-report/preview-events.jsonl, which preview-events.mjs follows so an agent can be
+// woken by each one; the file starts empty for each preview
+const eventsFile = path.join(outDir, 'preview-events.jsonl');
+fs.mkdirSync(outDir, { recursive: true }); fs.writeFileSync(eventsFile, '');
+const emit = (o) => { const line = JSON.stringify(o); console.log(line); try { fs.appendFileSync(eventsFile, line + '\n'); } catch { /* stdout still has it */ } };
 const die = (message, output) => { emit({ event: 'error', message, ...(output ? { output } : {}) }); if (output) log(output); process.exit(1); };
 let config;
 try { config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {})); } catch (e) { die(e.message); }
@@ -191,6 +197,7 @@ log(`reax preview: ${url}`);
 let closing = false;
 async function shutdown() {
   if (closing) return; closing = true;
+  emit({ event: 'stopped' });
   server.close(); server.closeAllConnections?.();
   try { (await browserPromise)?.close(); } catch { /* not started */ }
   storybook.stop?.(); setTimeout(() => process.exit(0), 200);

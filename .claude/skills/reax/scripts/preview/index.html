@@ -554,7 +554,7 @@ function commentPanel() {
   if (!stage) return h + '<p class="note">Loading the story.</p>';
   if (!slots().length) return h + '<p class="note">This story has no <code>data-slot</code> parts to comment on yet. Components made with reax mark their parts.</p>';
   if (!el) return h + `<p class="note">Click an element in the frame to attach a comment.</p>`;
-  return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div>`;
+  return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div><p class="note">Claude usually answers in the chat within a few seconds. If it does not, say “check the preview” there.</p>`;
 }
 /* which parts the frame cuts off: out = wholly outside it, cut = at least partly outside it */
 function frameFit() {

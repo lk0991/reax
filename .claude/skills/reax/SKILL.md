@@ -82,3 +82,4 @@ All scripts live in `scripts/`, run with Node 20 or newer, and print JSON or Mar
 - `setup.mjs`: `--check`, `--install`, `--install-browser`
 - `visual-test.mjs`: the visual test, `--approve`, `--preview`
 - `preview.mjs`: the live preview helper
+- `preview-events.mjs`: follows the preview's events, for a watcher, with `--from <line>` to re-arm
