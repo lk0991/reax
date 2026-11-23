@@ -21,7 +21,7 @@ Audit existing components against `DESIGN.md`, `COMPONENTS.md`, the component ca
    { "Button": { "reviewedAt": "2026-11-23T09:00:00Z", "findings": [ { "rank": "blocking", "what": "Icon-only button has no name", "where": "src/components/Button/Button.tsx:42", "rule": "WCAG 2.2 SC 4.1.2", "fix": "Add aria-label", "verified": true } ] } }
    ```
 
-   `rank` is `blocking` or `should-fix` (a convention deviation is always `should-fix`, with `rule` as `COMPONENTS.md: <convention>`). Set `verified: false` for a finding that needs visual-test. A component with no findings gets an empty list, so `improve` knows it was reviewed.
+   `rank` is `blocking` or `should-fix` (a convention deviation is always `should-fix`, with `rule` as `COMPONENTS.md: <convention>`). Set `verified: false` for a finding that needs visual-test. A component with no findings gets an empty list, so `improve` knows it was reviewed. Add `"explained": ["code.definition", ...]` with the `key` of every convention deviation you judged explained (by `COMPONENTS.md`, the card or a Requirement), so the verdict does not count it again.
 6. **Do not pad.** If a group is empty, say "none". Do not list things that are fine except in "Looks fine", one line.
 7. **Close** by offering `visual-test` for rendered evidence and `improve` for a written list. Offer to make the fixes, one component at a time. Make none unprompted.
 

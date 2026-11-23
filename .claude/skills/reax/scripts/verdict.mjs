@@ -15,6 +15,7 @@ import { changedFiles } from './lib/select.mjs';
 import { mergeConfig } from './lib/capture.mjs';
 import { decide, renderVerdict, dependencyChanges, classifyScope } from './lib/verdict.mjs';
 import { previewReach } from './lib/reach.mjs';
+import { lintCommand, reviewEvidence, conventionsEvidence } from './lib/evidence.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -71,7 +72,27 @@ function visualTest() {
   return { status: failures.length ? 'fail' : 'pass', summary: { total: summary.total, pass: summary.pass, warning: summary.warning, failure: summary.failure }, failures, warnings, changedFromBaseline, report: 'visual-report/report.md', gallery: summary.gallery?.page };
 }
 
-const evidence = { createdAt: new Date().toISOString(), root: path.basename(root), scope, checks: { typecheck: typecheck(), visualTest: visualTest() } };
+/* ---------- lint, review, conventions ---------- */
+function lint() {
+  const c = lintCommand(root, scope.changedFiles);
+  if (c.status) return c;
+  log(`Lint: ${path.basename(c.command)} ${c.args.map((a) => (a.includes(path.sep) ? path.basename(a) : a)).join(' ')}`);
+  const r = spawnSync(c.command, c.args, { cwd: root, encoding: 'utf8', timeout: 300_000 });
+  const command = `${path.basename(c.command)} ${c.args.slice(0, 3).map((a) => (a.includes(path.sep) ? path.basename(a) : a)).join(' ')}`;
+  return r.status === 0 ? { status: 'pass', command } : { status: 'fail', command, detail: tail((r.stdout || '') + '\n' + (r.stderr || '')) };
+}
+const review = readJson(path.join(root, 'visual-report', 'review.json'), {}) || {};
+const changedAt = {};
+for (const f of scope.changedFiles) {
+  const c = classifyScope([f], { componentsDir }).components[0]; if (!c) continue;
+  try { changedAt[c] = Math.max(changedAt[c] || 0, fs.statSync(path.join(root, f)).mtimeMs); } catch { /* deleted */ }
+}
+
+const evidence = { createdAt: new Date().toISOString(), root: path.basename(root), scope, checks: {
+  typecheck: typecheck(), lint: lint(), visualTest: visualTest(),
+  review: scope.components.length ? reviewEvidence(review, scope.components, changedAt) : { status: 'not-run', reason: 'No component changed.', howTo: 'Name the components with --component.' },
+  conventions: conventionsEvidence(root, sidecar.conventions || null, scope.components, review),
+} };
 const v = decide(evidence);
 fs.mkdirSync(outDir, { recursive: true });
 writeJson(path.join(outDir, 'evidence.json'), evidence);
