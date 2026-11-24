@@ -12,8 +12,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, readJson, writeJson, findUp } from './lib/runtime.mjs';
 import { decide } from './lib/verdict.mjs';
-import { beforeAfter } from './lib/before-after.mjs';
+import { beforeAfter, listBaselines } from './lib/before-after.mjs';
 import { approvalPlan, prDescription } from './lib/approval.mjs';
+import { currentChange } from './lib/evidence.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -24,9 +25,12 @@ const evidence = readJson(path.join(dir, 'evidence.json'), null);
 if (!evidence) out({ ok: false, error: 'There is no verdict to approve. Run the verdict first.' }, 1);
 if (!args.approver) out({ ok: false, error: '--approver is required: who is approving, in their own words.' }, 1);
 
+// the verdict must still describe the code, and the screenshots must be the ones it judged
+if (currentChange(root, evidence.scope?.base).hash !== evidence.diffHash) out({ ok: false, error: 'The change has changed since the verdict: run the verdict again before approving.' }, 1);
+const runFile = path.join(root, 'visual-report', 'run.json');
+if (fs.existsSync(runFile) && fs.statSync(runFile).mtimeMs > fs.statSync(path.join(dir, 'evidence.json')).mtimeMs) out({ ok: false, error: 'The visual test ran again after the verdict: run the verdict again before approving.' }, 1);
 const verdict = decide(evidence);
-const baseDir = path.join(root, '.reax', 'baselines'); const baselines = {};
-if (fs.existsSync(baseDir)) for (const id of fs.readdirSync(baseDir)) baselines[id] = fs.readdirSync(path.join(baseDir, id)).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
+const baselines = listBaselines(root);
 const ba = beforeAfter(readJson(path.join(root, 'visual-report', 'run.json'), { stories: [] }), baselines);
 const plan = approvalPlan(verdict, ba);
 if (!plan.ok) out({ ok: false, error: plan.reason }, 1);

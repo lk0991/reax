@@ -26,7 +26,7 @@ export function classifyScope(files, { componentsDir = 'src/components', tokenFi
   const dir = componentsDir.replace(/\/$/, '') + '/';
   const components = new Set(); const outside = []; const global = [];
   for (const f of files) {
-    if (f.startsWith(dir)) { const rest = f.slice(dir.length); components.add(rest.includes('/') ? rest.split('/')[0] : path.posix.basename(rest).replace(/\..*$/, '')); continue; }
+    if (f.startsWith(dir)) { const rest = f.slice(dir.length); const name = rest.includes('/') ? rest.split('/')[0] : path.posix.basename(rest).replace(/\..*$/, ''); if (rest.includes('/') || /^[A-Z]/.test(name)) components.add(name); continue; }
     outside.push(f);
     if (/\.(css|scss|sass|less)$/.test(f) || /^\.storybook\/preview\./.test(f) || tokenFiles.includes(f)) global.push(f);
   }
@@ -53,8 +53,10 @@ export function decide(e) {
     } else if (key === 'visualTest') {
       const s = c.summary || {};
       for (const f of c.failures || []) blocking.push(`${f.story}: ${f.reasons.join('; ')}`);
+      if (c.status === 'fail' && !(c.failures || []).length) blocking.push(`The visual test did not finish: ${String(c.detail || 'no result').split('\n')[0]}`);
       for (const w of c.warnings || []) concerns.push(`${w.story}: ${w.reasons.join('; ')}`);
-      if (c.status === 'fail' || (c.failures || []).length) line(key, label, 'fail', `${plural((c.failures || []).length, 'story', 'stories')} of ${s.total} fail: accessibility, keyboard or rendering problems a person would run into.`, (c.failures || []).map((f) => `${f.story}: ${f.reasons.join('; ')}`).join('\n'));
+      if (c.status === 'fail' && !(c.failures || []).length) line(key, label, 'fail', 'The visual test did not finish, so nothing was rendered or checked.', c.detail);
+      else if (c.status === 'fail' || (c.failures || []).length) line(key, label, 'fail', `${plural((c.failures || []).length, 'story', 'stories')} of ${s.total} fail: accessibility, keyboard or rendering problems a person would run into.`, (c.failures || []).map((f) => `${f.story}: ${f.reasons.join('; ')}`).join('\n'));
       else if ((c.warnings || []).length) line(key, label, 'concern', `All ${plural(s.total, 'story', 'stories')} render, but ${plural(c.warnings.length, 'has a problem', 'have problems')} worth fixing.`, c.warnings.map((w) => `${w.story}: ${w.reasons.join('; ')}`).join('\n'));
       else line(key, label, 'pass', `All ${plural(s.total, 'story', 'stories')} render at every size, and pass the accessibility and keyboard checks.`, c.report);
       if ((c.changedFromBaseline || []).length) line('baselines', 'Approved screenshots', 'info', `${c.changedFromBaseline.length === 1 ? '1 story looks different from its approved screenshots' : `${c.changedFromBaseline.length} stories look different from their approved screenshots`}: that is the change you are approving, shown before and after.`, c.changedFromBaseline.join('\n'));

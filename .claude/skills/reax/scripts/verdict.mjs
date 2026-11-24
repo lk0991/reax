@@ -17,9 +17,9 @@ import { changedFiles } from './lib/select.mjs';
 import { mergeConfig } from './lib/capture.mjs';
 import { decide, renderVerdict, dependencyChanges, classifyScope } from './lib/verdict.mjs';
 import { previewReach } from './lib/reach.mjs';
-import { lintCommand, reviewEvidence, conventionsEvidence, reviewerEvidence, reviewerPacket, diffHash } from './lib/evidence.mjs';
+import { lintCommand, reviewEvidence, conventionsEvidence, reviewerEvidence, reviewerPacket, currentChange } from './lib/evidence.mjs';
 import { cardFor } from './lib/cards.mjs';
-import { beforeAfter, renderBeforeAfter } from './lib/before-after.mjs';
+import { beforeAfter, renderBeforeAfter, listBaselines } from './lib/before-after.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -59,7 +59,8 @@ function typecheck() {
 /* ---------- visual test ---------- */
 function visualTest() {
   if (args['no-visual']) return { status: 'not-run', reason: 'The visual test was skipped for this verdict.', howTo: 'Run the verdict without --no-visual.' };
-  const all = scope.globalStyles.some((f) => !scope.expected.includes(f)) || scope.globalStyles.length > 0 && !scope.components.length;
+  // a style that applies everywhere (a token file included, expected or not) can move any component
+  const all = scope.globalStyles.length > 0;
   if (!all && !scope.components.length) return { status: 'not-run', reason: 'No component changed, so there was nothing to render.', howTo: 'Name the components with --component.' };
   const which = all ? ['--all'] : ['--component', scope.components.join(',')];
   log(`Visual test: ${which.join(' ')}`);
@@ -93,12 +94,7 @@ for (const f of scope.changedFiles) {
 }
 
 /* ---------- the change itself, for the independent reviewer ---------- */
-const git = (...a) => spawnSync('git', ['-C', root, ...a], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-const exclude = [':(exclude)visual-report', ':(exclude).reax/baselines'];
-const from = changed.base ? (git('merge-base', changed.base, 'HEAD').stdout.trim() || changed.base) : 'HEAD';
-const untracked = git('ls-files', '--others', '--exclude-standard', '--', '.', ...exclude).stdout.split('\n').filter(Boolean);
-const diff = [git('diff', from, '--', '.', ...exclude).stdout, ...untracked.map((f) => git('diff', '--no-index', '--', '/dev/null', f).stdout)].join('\n').trim();
-const hash = diffHash(diff);
+const { diff, hash } = currentChange(root, changed.base);
 const reviewerFile = path.join(outDir, 'reviewer.json');
 
 const evidence = { createdAt: new Date().toISOString(), root: path.basename(root), scope, checks: {
@@ -124,8 +120,7 @@ if (args.packet) {
 // before and after: the approved screenshots beside this run's, copied next to the page so it publishes as is
 let ba = null;
 if (evidence.checks.visualTest.summary) {
-  const baseDir = path.join(root, '.reax', 'baselines'); const baselines = {};
-  if (fs.existsSync(baseDir)) for (const id of fs.readdirSync(baseDir)) baselines[id] = fs.readdirSync(path.join(baseDir, id)).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
+  const baselines = listBaselines(root);
   ba = beforeAfter(readJson(path.join(root, 'visual-report', 'run.json'), { stories: [] }), baselines);
   fs.rmSync(path.join(root, 'visual-report', 'before'), { recursive: true, force: true });
   for (const c of ba.copies) { const to = path.join(root, 'visual-report', c.to); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(path.join(root, c.from), to); }

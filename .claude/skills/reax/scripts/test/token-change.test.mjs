@@ -87,3 +87,42 @@ test('contrastPairs finds text and UI pairs by the usual token names', () => {
   assert.ok(has('colors.ink-muted', 'colors.bg'));
   assert.ok(has('colors.primary', 'colors.bg'));
 });
+
+test('tokens in DESIGN.md front matter, and CRLF files, are changed too; a token missing from DESIGN.md is an error before anything is written', () => {
+  const root = project();
+  const md = path.join(root, 'DESIGN.md');
+  const text = fs.readFileSync(md, 'utf8');
+  // move the colours into the front matter and use Windows line endings
+  const colours = text.match(/```yaml\n(colors:[\s\S]*?)\n```/)[1];
+  const moved = text.replace(/```yaml\ncolors:[\s\S]*?\n```/, 'See the front matter.').replace(/^---\n/, `---\n${colours}\n`).replace(/\n/g, '\r\n');
+  fs.writeFileSync(md, moved);
+  applyTokenChange(root, planTokenChange(root, { 'colors.primary': '#2a5db0' }));
+  const after = fs.readFileSync(md, 'utf8');
+  assert.match(after, /primary: "?#2a5db0"?/); assert.ok(after.includes('\r\n'));
+  assert.equal(loadDesign(root, { root }).tokens['colors.primary'].resolved, '#2a5db0');
+});
+
+test('a token file the change cannot be written into is an error, not a silent no-op', () => {
+  const root = project();
+  fs.writeFileSync(path.join(root, 'src/styles/tokens.css'), CSS.replace('--brand-blue-500: #1f4f9a;', '--brand-blue-500 #1f4f9a'));
+  const plan = planTokenChange(root, { 'colors.primary': '#2a5db0' });
+  assert.equal(plan.edits.length, 0);
+  assert.match(plan.errors[0].message, /could not find/i);
+});
+
+test('names with regex characters (an SCSS $variable) and a last declaration without a semicolon are written', () => {
+  const root = project();
+  fs.writeFileSync(path.join(root, 'src/styles/tokens.css'), ':root {\n  --brand-blue-500: #1f4f9a\n}\n');
+  const side = JSON.parse(fs.readFileSync(path.join(root, '.reax/design.json'), 'utf8')); side.tokenSources['colors.primary'].line = 2; fs.writeFileSync(path.join(root, '.reax/design.json'), JSON.stringify(side));
+  applyTokenChange(root, planTokenChange(root, { 'colors.primary': '#2a5db0' }));
+  assert.match(fs.readFileSync(path.join(root, 'src/styles/tokens.css'), 'utf8'), /--brand-blue-500: #2a5db0\n/);
+});
+
+test('a change is checked through the tokens that refer to it', () => {
+  const root = project();
+  const md = path.join(root, 'DESIGN.md');
+  fs.writeFileSync(md, fs.readFileSync(md, 'utf8').replace(/(colors:\n)/, '$1  link: "{colors.primary}"\n'));
+  // primary on surface still passes 3:1 at #6b8fc9, but link is text-like: it needs 4.5:1
+  const plan = planTokenChange(root, { 'colors.primary': '#7f9fd0' });
+  assert.ok(plan.errors.some((e) => /link on surface/.test(e.message)), JSON.stringify(plan.errors));
+});

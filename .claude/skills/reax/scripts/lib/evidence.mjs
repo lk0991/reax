@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { readJson, packageManager } from './runtime.mjs';
 import { analyzeComponents, collectFiles, deviations } from './conventions.mjs';
 
@@ -12,9 +13,10 @@ export function lintCommand(root, files = []) {
   const pkg = readJson(path.join(root, 'package.json'), {});
   const script = ['lint', 'lint:js', 'eslint'].find((s) => pkg.scripts?.[s]);
   if (script) return { command: packageManager(root).name, args: ['run', script] };
+  const targets = files.filter((f) => /\.[jt]sx?$/.test(f) && fs.existsSync(path.join(root, f)));
   const config = fs.readdirSync(root).some((f) => /^(eslint\.config\.(js|mjs|cjs|ts)|\.eslintrc(\.(js|cjs|json|ya?ml))?)$/.test(f)) || !!pkg.eslintConfig;
   const bin = path.join(root, 'node_modules', 'eslint', 'bin', 'eslint.js');
-  if (config && fs.existsSync(bin)) return { command: process.execPath, args: [bin, ...files.filter((f) => /\.[jt]sx?$/.test(f))] };
+  if (config && fs.existsSync(bin)) return targets.length ? { command: process.execPath, args: [bin, ...targets] } : { status: 'not-run', reason: 'No JavaScript or TypeScript file changed, so there was nothing to lint.', howTo: 'Nothing to do.' };
   if (config) return { status: 'not-run', reason: 'The project has an ESLint config but ESLint is not installed.', howTo: 'Install the project\'s dependencies.' };
   return { status: 'not-run', reason: 'The project has no lint set up.', howTo: 'Add ESLint and a "lint" script, so the code is checked against the team\'s own rules.' };
 }
@@ -29,7 +31,9 @@ export function reviewEvidence(review, components, changedAt = {}) {
   for (const c of components) {
     const r = byName.get(c.toLowerCase());
     if (!r) { missing.push(c); continue; }
-    if (changedAt[c] && Date.parse(r.reviewedAt) < changedAt[c]) { stale.push(c); continue; }
+    const changed = Object.entries(changedAt).find(([k]) => k.toLowerCase() === c.toLowerCase())?.[1];
+    const reviewed = Date.parse(r.reviewedAt);
+    if (Number.isNaN(reviewed) || (changed && reviewed < changed)) { stale.push(c); continue; }
     for (const f of r.findings || []) (f.rank === 'blocking' ? blocking : shouldFix).push({ component: c, ...f });
   }
   if (missing.length || stale.length) {
@@ -94,4 +98,14 @@ Write your answer as JSON to \`${out}\`, exactly in this shape, and nothing else
 ${diff}
 \`\`\`
 `;
+}
+
+/** The change itself: its diff (since the merge base with `base`, or since HEAD, plus untracked files) and its hash. */
+export function currentChange(root, base) {
+  const git = (...a) => spawnSync('git', ['-C', root, ...a], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const exclude = [':(exclude)visual-report', ':(exclude).reax/baselines'];
+  const from = base ? (git('merge-base', base, 'HEAD').stdout.trim() || base) : 'HEAD';
+  const untracked = git('ls-files', '--others', '--exclude-standard', '--', '.', ...exclude).stdout.split('\n').filter(Boolean);
+  const diff = [git('diff', from, '--', '.', ...exclude).stdout, ...untracked.map((f) => git('diff', '--no-index', '--', '/dev/null', f).stdout)].join('\n').trim();
+  return { diff, hash: diffHash(diff) };
 }

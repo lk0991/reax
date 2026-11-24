@@ -103,3 +103,15 @@ test('a reviewer with concerns makes it "needs work"; a blocking reviewer blocks
   const b = good(); b.checks.reviewer = { status: 'pass', verdict: 'blocked', findings: [{ what: 'Focus lost on close' }] };
   assert.equal(decide(b).level, 'blocked');
 });
+
+test('a visual test that crashed or never finished blocks, even with no failing story', () => {
+  const e = good(); e.checks.visualTest = { status: 'fail', detail: 'The Storybook build failed.' };
+  const v = decide(e);
+  assert.equal(v.level, 'blocked');
+  assert.ok(v.blocking.some((b) => /did not finish/.test(b)));
+});
+
+test('classifyScope ignores files directly in the components directory that are not components (a barrel index)', () => {
+  const s = classifyScope(['src/components/index.ts', 'src/components/Button.tsx', 'src/components/Card/Card.tsx'], { componentsDir: 'src/components' });
+  assert.deepEqual(s.components, ['Button', 'Card']);
+});

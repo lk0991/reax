@@ -69,3 +69,14 @@ test('new stories are cropped to their content too', () => {
   const html = renderBeforeAfter(beforeAfter(r, baselines));
   assert.match(html, /class="crop"[^>]*><img src="screenshots\/components-button--large\/mobile-390\.png"/);
 });
+
+test('listBaselines reads story folders only, ignoring stray files such as .DS_Store', async () => {
+  const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path');
+  const { listBaselines } = await import('../lib/before-after.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'reax-bl-'));
+  fs.mkdirSync(path.join(root, '.reax/baselines/a--b'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.reax/baselines/a--b/mobile-390.png'), '');
+  fs.writeFileSync(path.join(root, '.reax/baselines/.DS_Store'), '');
+  assert.deepEqual(listBaselines(root), { 'a--b': ['mobile-390'] });
+  assert.deepEqual(listBaselines(fs.mkdtempSync(path.join(os.tmpdir(), 'reax-bl-'))), {});
+});

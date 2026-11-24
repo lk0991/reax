@@ -1,7 +1,17 @@
 // Before and after: for one visual-test run, every story that looks different from its approved screenshots (its
 // Baselines), side by side, plus the stories that did not change (listed as checked), new stories and stories whose
 // Baselines remain but which no longer exist. The "before" is the Baseline, so one run is enough. Spec #35.
+import fs from 'node:fs';
+import path from 'node:path';
 import { esc } from './page.mjs';
+
+/** The approved screenshots on disk: { storyId: [viewport, ...] }, story folders only. */
+export function listBaselines(root) {
+  const dir = path.join(root, '.reax', 'baselines'); const out = {};
+  if (!fs.existsSync(dir)) return out;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) out[e.name] = fs.readdirSync(path.join(dir, e.name)).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
+  return out;
+}
 
 const LABEL = { 'mobile-390': '390 × 844', 'desktop-1280': '1280 × 800', 'reflow-320': '320 reflow', 'text-200': '200% text' };
 const label = (v) => LABEL[v] || (String(v).startsWith('pinned-') ? `${String(v).slice(7)}px (pinned)` : v);

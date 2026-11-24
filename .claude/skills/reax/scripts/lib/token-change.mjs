@@ -11,6 +11,9 @@ import { contrast } from './direction.mjs';
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 const TRIAL = (root) => path.join(root, 'visual-report', 'token-trial');
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// `name: value` up to a semicolon or the end of the line (a last declaration may have none)
+const declaration = (name) => new RegExp(`(${escRe(name)}\\s*:\\s*)([^;\\n]+?)(\\s*(?:;|$))`);
 const leaf = (p) => p.split('.').pop();
 const isGround = (n) => !n.startsWith('on-') && /(^|-)(bg|background|surface|paper|canvas|base)(-|$)/.test(n);
 const isText = (n) => n.startsWith('on-') || /(^|-)(ink|text|fg|foreground|muted|body|heading)(-|$)/.test(n);
@@ -62,8 +65,13 @@ function nearest(value, check) {
 export function planTokenChange(root, changes) {
   const design = loadDesign(root, { root });
   const edits = []; const errors = [];
-  const now = Object.fromEntries(Object.values(design.tokens).filter((t) => t.group === 'colors').map((t) => [t.path, t.resolved]));
-  const next = { ...now, ...Object.fromEntries(Object.entries(changes).filter(([p]) => p.startsWith('colors.'))) };
+  // colours as written (references kept), resolved twice: as they are, and with the proposed changes, so a token that
+  // refers to a changed one ({colors.primary}) is checked with its new value
+  const raw = Object.fromEntries(Object.values(design.tokens).filter((t) => t.group === 'colors').map((t) => [t.path, t.value]));
+  const resolveAll = (vals) => { const out = {}; const get = (k, seen = []) => { const v = vals[k]; const m = typeof v === 'string' && v.match(/^\{([\w.-]+)\}$/); return m && !seen.includes(k) ? get(m[1], [...seen, k]) : v; }; for (const k of Object.keys(vals)) out[k] = get(k); return out; };
+  const refersTo = (k, target, seen = []) => { const m = typeof raw[k] === 'string' && raw[k].match(/^\{([\w.-]+)\}$/); return !!m && !seen.includes(k) && (m[1] === target || refersTo(m[1], target, [...seen, k])); };
+  const now = resolveAll(raw);
+  const next = resolveAll({ ...raw, ...Object.fromEntries(Object.entries(changes).filter(([p]) => p.startsWith('colors.'))) });
   const pairs = contrastPairs(Object.keys(next));
   for (const [p, to] of Object.entries(changes)) {
     const t = design.tokens[p];
@@ -72,11 +80,12 @@ export function planTokenChange(root, changes) {
     if (!src?.file || !src?.css) { errors.push({ path: p, message: `${p} has no recorded place in a token file. Run init so it is recorded.` }); continue; }
     if (p.startsWith('colors.')) {
       if (!HEX.test(to)) { errors.push({ path: p, message: `${p}: use a hex colour such as #1f4f9a, not "${to}".` }); continue; }
-      const mine = pairs.filter((x) => (x.fg === p || x.bg === p) && HEX.test(next[x.fg] || '') && HEX.test(next[x.bg] || ''));
+      const touches = (k) => k === p || refersTo(k, p);
+      const mine = pairs.filter((x) => (touches(x.fg) || touches(x.bg)) && HEX.test(next[x.fg] || '') && HEX.test(next[x.bg] || ''));
       const ratio = (x, vals) => contrast(vals[x.fg], vals[x.bg]);
       const broken = mine.filter((x) => ratio(x, next) < x.need && (!HEX.test(now[x.fg] || '') || !HEX.test(now[x.bg] || '') || ratio(x, now) >= x.need || ratio(x, next) < ratio(x, now)));
       if (broken.length) {
-        const passes = (c) => mine.every((x) => { const v = { ...next, [p]: c }; return ratio(x, v) >= x.need || (HEX.test(now[x.fg] || '') && HEX.test(now[x.bg] || '') && ratio(x, now) < x.need && ratio(x, v) >= ratio(x, now)); });
+        const passes = (c) => mine.every((x) => { const v = resolveAll({ ...raw, ...Object.fromEntries(Object.entries(changes).filter(([q]) => q.startsWith('colors.'))), [p]: c }); return ratio(x, v) >= x.need || (HEX.test(now[x.fg] || '') && HEX.test(now[x.bg] || '') && ratio(x, now) < x.need && ratio(x, v) >= ratio(x, now)); });
         errors.push({ path: p, message: broken.map((x) => `${leaf(x.fg)} on ${leaf(x.bg)} would be ${Math.round(ratio(x, next) * 100) / 100}:1; it needs ${x.need}:1 (WCAG 2.2 SC ${x.sc}).`).join(' '), nearest: nearest(to, passes) });
         continue;
       }
@@ -84,8 +93,9 @@ export function planTokenChange(root, changes) {
     const file = path.join(root, src.file); const lines = fs.readFileSync(file, 'utf8').split('\n');
     let i = src.line - 1;
     if (!lines[i]?.includes(`${src.css}:`)) i = lines.findIndex((l) => l.trimStart().startsWith(`${src.css}:`));
-    if (i < 0) { errors.push({ path: p, message: `${src.css} is no longer in ${src.file}. Run init to record where it is.` }); continue; }
-    const from = lines[i].match(new RegExp(`${src.css.replace(/[-]/g, '\\-')}\\s*:\\s*([^;]+);`))?.[1]?.trim();
+    if (i < 0) { errors.push({ path: p, message: `Could not find "${src.css}: <value>" in ${src.file}, so the change cannot be written there. Change it by hand, or run init to record where it is.` }); continue; }
+    const from = lines[i]?.match(declaration(src.css))?.[2]?.trim();
+    if (from === undefined) { errors.push({ path: p, message: `Could not find "${src.css}: <value>" in ${src.file}, so the change cannot be written there. Change it by hand, or run init to record where it is.` }); continue; }
     edits.push({ path: p, file: src.file, line: i + 1, css: src.css, from, to: String(to) });
   }
   return { edits, errors };
@@ -102,23 +112,31 @@ export function applyTokenChange(root, plan, { trial = false } = {}) {
     if (fs.existsSync(TRIAL(root))) throw new Error('A token-change trial is already open: keep it or undo it first.');
     writeJson(path.join(TRIAL(root), 'backup.json'), { createdAt: new Date().toISOString(), edits: plan.edits, files: Object.fromEntries(touched.map((f) => [f, fs.readFileSync(path.join(root, f), 'utf8')])) });
   }
+  // DESIGN.md first, in memory: only the YAML (front matter or fenced blocks) that holds each token, the prose around it
+  // untouched. Every token must be found before anything is written.
+  const { parse, stringify } = req('yaml', root);
+  const original = fs.readFileSync(designPath, 'utf8'); const crlf = original.includes('\r\n');
+  const found = new Set();
+  const rewrite = (body) => {
+    let doc; try { doc = parse(body); } catch { return null; }
+    const mine = plan.edits.filter((e) => doc && typeof doc === 'object' && e.path.split('.')[0] in doc);
+    if (!mine.length) return null;
+    for (const e of mine) { setIn(doc, e.path.split('.'), e.to); found.add(e.path); }
+    return stringify(doc, { lineWidth: 0 }).trimEnd();
+  };
+  let md = original.replace(/\r\n/g, '\n');
+  md = md.replace(/^---\n([\s\S]*?)\n---/, (all, body) => { const r = rewrite(body); return r === null ? all : `---\n${r}\n---`; });
+  md = md.replace(/^(\s*```ya?ml[ \t]*\n)([\s\S]*?)(\n\s*```)/gm, (all, open, body, close) => { const r = rewrite(body); return r === null ? all : `${open}${r}${close}`; });
+  const missing = plan.edits.filter((e) => !found.has(e.path)).map((e) => e.path);
+  if (missing.length) throw new Error(`Could not find ${missing.join(', ')} in DESIGN.md; nothing was written.`);
   // 1. the token file, value only, at the recorded line
   for (const e of plan.edits) {
     const file = path.join(root, e.file); const lines = fs.readFileSync(file, 'utf8').split('\n');
-    lines[e.line - 1] = lines[e.line - 1].replace(new RegExp(`(${e.css.replace(/[-]/g, '\\-')}\\s*:\\s*)[^;]+;`), `$1${e.to};`);
+    lines[e.line - 1] = lines[e.line - 1].replace(declaration(e.css), `$1${e.to}$3`);
     fs.writeFileSync(file, lines.join('\n'));
   }
-  // 2. DESIGN.md: only the YAML block that holds each token, the prose around it untouched
-  const { parse, stringify } = req('yaml', root);
-  let md = fs.readFileSync(designPath, 'utf8');
-  md = md.replace(/(^```ya?ml\n)([\s\S]*?)(\n```)/gm, (all, open, body, close) => {
-    let doc; try { doc = parse(body); } catch { return all; }
-    const mine = plan.edits.filter((e) => doc && e.path.split('.')[0] in doc);
-    if (!mine.length) return all;
-    for (const e of mine) setIn(doc, e.path.split('.'), e.to);
-    return `${open}${stringify(doc, { lineWidth: 0 }).trimEnd()}${close}`;
-  });
-  fs.writeFileSync(designPath, md);
+  // 2. DESIGN.md, with its own line endings
+  fs.writeFileSync(designPath, crlf ? md.replace(/\n/g, '\r\n') : md);
   // 3. the sidecar's record of the token files, so DESIGN.md is not reported stale
   const side = readJson(sidecarPath, null);
   if (side?.scan) { side.scan.hashes = currentHashes(root, side.scan); fs.writeFileSync(sidecarPath, JSON.stringify(side, null, 2) + '\n'); }

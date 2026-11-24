@@ -9,7 +9,7 @@ const tmp = (files) => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rea
 
 test('lint: a "lint" script wins, then an ESLint config with ESLint installed, otherwise a named gap', () => {
   assert.deepEqual(lintCommand(tmp({ 'package.json': JSON.stringify({ scripts: { lint: 'eslint .' } }) })).args, ['run', 'lint']);
-  const r = tmp({ 'package.json': '{}', 'eslint.config.js': 'export default []', 'node_modules/eslint/bin/eslint.js': '' });
+  const r = tmp({ 'package.json': '{}', 'eslint.config.js': 'export default []', 'node_modules/eslint/bin/eslint.js': '', 'src/components/Button/Button.tsx': 'x' });
   assert.match(lintCommand(r, ['src/components/Button/Button.tsx']).args.join(' '), /eslint\.js src\/components\/Button\/Button\.tsx$/);
   const none = lintCommand(tmp({ 'package.json': '{}' }));
   assert.equal(none.status, 'not-run'); assert.match(none.howTo, /ESLint/);
@@ -75,4 +75,18 @@ test('reviewer packet: the diff, the files to read, the evidence and the exact a
   assert.match(p, /"diffHash": "abc123"/);
   assert.match(p, /"verdict": "agree" \| "concerns" \| "blocked"/);
   assert.match(p, /visual-report\/verdict\/reviewer\.json/);
+});
+
+test('review: component names match whatever their case, and a review without a date is stale', () => {
+  const r = reviewEvidence({ Button: { reviewedAt: '2026-11-23T10:00:00Z', findings: [] } }, ['button'], { Button: Date.parse('2026-11-23T11:00:00Z') });
+  assert.equal(r.status, 'not-run'); assert.match(r.reason, /changed since/);
+  const undated = reviewEvidence({ Button: { findings: [] } }, ['Button'], { Button: 1 });
+  assert.equal(undated.status, 'not-run');
+});
+
+test('lint: only changed files that still exist; none left means nothing to lint', () => {
+  const r = tmp({ 'package.json': '{}', 'eslint.config.js': 'export default []', 'node_modules/eslint/bin/eslint.js': '', 'src/a.tsx': 'x' });
+  assert.match(lintCommand(r, ['src/a.tsx', 'src/gone.tsx']).args.join(' '), /eslint\.js src\/a\.tsx$/);
+  const none = lintCommand(r, ['src/gone.tsx', 'README.md']);
+  assert.equal(none.status, 'not-run'); assert.match(none.reason, /No JavaScript or TypeScript file/);
 });
