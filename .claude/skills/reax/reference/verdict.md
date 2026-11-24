@@ -32,3 +32,15 @@ If this session cannot start a separate agent, write `{ "diffHash": "<hash>", "s
 Lead with the level and the one-line headline, in plain words. Then what must be fixed, what should be fixed and what was not checked, a line each. Then where the page is: locally, the file; in a cloud session, publish `visual-report/verdict.html` as a private Artifact with the files the summary lists under `publish.files` (each at the same path relative to `visual-report/`). Never describe a level the command did not print.
 
 On **Blocked** or **Needs work**, say what you will do about each item and, when the change is yours to make, fix it, run the verdict and the reviewer again, at most two rounds, before asking the person. After two rounds, report what is still open, item by item, and stop. Never change a check, a Baseline or a threshold to get a better level.
+
+## Approve and hand off
+
+When the person has seen the verdict and wants the change, run:
+
+```
+node scripts/approve.mjs --root <project> --approver "<who, in their words>" [--page-url <published verdict>]
+```
+
+It refuses a **Blocked** verdict and says why. For **Ready with gaps** or **Needs work** it stops and asks a question naming what is open: ask the person, and run it again with `--confirm` only on their yes. It then updates the approved screenshots (Baselines) of exactly the changed and new stories, records who approved it on which verdict (`visual-report/verdict/approval.json`), and writes the pull request description (`visual-report/verdict/pull-request.md`): the verdict, every check, and before and after pictures linked from the approved screenshots on the base branch and the change's branch.
+
+Then commit the change together with `.reax/baselines`, push the branch, and open the pull request with that description, using the repository tools this session has. Without repository access, give the person the description file. reax never merges.

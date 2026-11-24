@@ -89,6 +89,7 @@ All scripts live in `scripts/`, run with Node 20 or newer, and print JSON or Mar
 - `conventions.mjs`: learns the project's component conventions, for `init`
 - `direction.mjs`: `check`, `specimen`, `commit`, for `direction`
 - `verdict.mjs`: gathers the evidence for a change and writes the quality verdict
+- `approve.mjs`: approves a verdict (Baselines, approval record) and writes the pull request description
 - `token-change.mjs`: plans, tries, keeps or undoes token value changes, for `tokens`
 - `setup.mjs`: `--check`, `--install`, `--install-browser`
 - `visual-test.mjs`: the visual test, `--approve`, `--preview`
