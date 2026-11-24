@@ -24,7 +24,7 @@ import { cardFor } from './lib/cards.mjs';
 import { compareImages } from './lib/diff.mjs';
 import { renderReport } from './lib/report.mjs';
 import { renderGallery } from './lib/gallery.mjs';
-import { renderCatalogue } from './lib/catalogue.mjs';
+import { renderCatalogue, openFindings } from './lib/catalogue.mjs';
 import { loadDesign } from './lib/design.mjs';
 import { analyzeComponents, collectFiles, deviations as conventionDeviations } from './lib/conventions.mjs';
 import { selectStories as select } from './lib/select.mjs';
@@ -167,7 +167,7 @@ async function run() {
     const design = loadDesign(root, { root });
     let devs = null;
     if (design.conventions) { devs = {}; const now = analyzeComponents(collectFiles(root, design.conventions.componentsDir), { componentsDir: design.conventions.componentsDir }); for (const d of conventionDeviations(design.conventions, now)) devs[d.component] = (devs[d.component] || 0) + 1; }
-    catalogue = renderCatalogue({ design, run: runJson, deviations: devs, scope: scope.mode === 'all' ? null : scope.description });
+    catalogue = renderCatalogue({ design, run: runJson, deviations: devs, findings: openFindings(readJson(path.join(reportDir, 'review.json'), {}), runJson), scope: scope.mode === 'all' ? null : scope.description });
     fs.writeFileSync(path.join(reportDir, 'catalogue.html'), catalogue.html);
   } catch (e) { log(`No catalogue: ${e.message}`); }
   // can the page and its screenshots go out in one publish? (count, total size and size of each file)

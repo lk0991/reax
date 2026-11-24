@@ -9,6 +9,14 @@ const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 const GROUPS = [['colors', 'Colours'], ['typography', 'Type'], ['spacing', 'Spacing'], ['rounded', 'Corners']];
 const SHOWN = ['mobile-390', 'desktop-1280'];
 
+/** Open findings per component: saved review findings (blocking, should fix) and stories failing the last run. */
+export function openFindings(review = {}, run = { stories: [] }) {
+  const out = {}; const add = (name, rank, what) => { const k = Object.keys(out).find((n) => n.toLowerCase() === name.toLowerCase()) || name; const e = out[k] || { count: 0, worst: 'should-fix', items: [] }; e.count++; if (rank === 'blocking') e.worst = 'blocking'; e.items.push(what); out[k] = e; };
+  for (const s of run.stories || []) if (s.result === 'failure') add(s.title.split('/').pop().trim(), 'blocking', `${s.name} fails a check${s.reasons?.length ? `: ${s.reasons.join('; ')}` : ''}`);
+  for (const [name, r] of Object.entries(review || {})) for (const f of r.findings || []) add(name, f.rank === 'blocking' ? 'blocking' : 'should-fix', f.what);
+  return out;
+}
+
 /**
  * @param design      loadDesign() output
  * @param run         the visual test's run.json
@@ -43,7 +51,7 @@ export function renderCatalogue({ design, run, deviations = null, findings = {},
     const conv = deviations === null ? 'Conventions are not recorded (no COMPONENTS.md).' : deviations[name] ? `${deviations[name]} difference${deviations[name] === 1 ? '' : 's'} from the project's conventions.` : 'Follows the project\'s conventions.';
     const open = findings[name];
     const st = stories.map((s) => `<div class="story"><h4>${esc(s.name)}${s.result === 'failure' ? ' <span class="tag bad">Fails a check</span>' : ''}</h4><div class="shots">${s.captures.filter((c) => SHOWN.includes(c.viewport) && c.screenshot).map((c) => { files.push(c.screenshot); return `<figure>${shot(c.screenshot, `${name} / ${s.name} at ${c.viewport === 'mobile-390' ? '390' : '1280'} wide`, cropOf({ ...c, diff: null }), 1)}<figcaption>${c.viewport === 'mobile-390' ? 'Phone' : 'Desktop'}</figcaption></figure>`; }).join('')}</div></div>`).join('');
-    return `<article class="comp" id="c-${esc(name.toLowerCase())}"><header><h3>${esc(name)}</h3><p class="meta">${card ? `Follows the ${esc(card)} card.` : 'No card: the shared rules apply.'} ${esc(conv)}${open ? ` <span class="tag ${open.worst === 'blocking' ? 'bad' : 'warn'}">${open.count} open finding${open.count === 1 ? '' : 's'}</span>` : ''}</p></header>${st}</article>`;
+    return `<article class="comp" id="c-${esc(name.toLowerCase())}"><header><h3>${esc(name)}</h3><p class="meta">${card ? `Follows the ${esc(card)} card.` : 'No card: the shared rules apply.'} ${esc(conv)}${open ? ` <span class="tag ${open.worst === 'blocking' ? 'bad' : 'warn'}">${open.count} open finding${open.count === 1 ? '' : 's'}</span>` : ''}</p>${open?.items?.length ? `<details><summary>What is open</summary><ul>${open.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</header>${st}</article>`;
   }).join('');
 
   const title = `${design.meta?.name || 'Design system'} catalogue`;
@@ -63,6 +71,7 @@ code { font-size: 0.8125rem; color: var(--muted); overflow-wrap: anywhere; }
 .shots figure { margin: 0; min-width: 0; } figcaption { color: var(--muted); font-size: 0.8125rem; }
 .shots img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); background: #fff; }
 .crop { position: relative; overflow: hidden; width: 100%; border: 1px solid var(--line); background: #fff; } .crop img { position: absolute; max-width: none; border: 0; }
+details { margin-top: 6px; font-size: 0.875rem; } summary { cursor: pointer; color: var(--muted); } details ul { margin: 6px 0 0; padding-left: 1.2em; }
 .tag { font-size: 0.75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; } .tag.bad { color: var(--bad); } .tag.warn { color: var(--warn); }`,
     body: `<main>
 <header><h1>${esc(title)}</h1><p class="meta">Every token and component, from the visual test of ${esc(String(run?.startedAt || '').replace('T', ' ').slice(0, 16))} UTC. Token names are the ones in the code.${scope ? ` This run covered only ${esc(scope)}: run the visual test with --all for every component.` : ''}</p></header>

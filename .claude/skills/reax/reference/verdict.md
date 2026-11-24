@@ -1,6 +1,6 @@
 # verdict
 
-Answer, for a change to components, "can this merge without a developer reviewing it?", in words a person who does not read code can trust. Every command that changes a component ends with it; run it on its own when someone asks whether a change can merge.
+Answer, for a change to components, "can this merge without a developer reviewing it?", in words a person who does not read code can trust. Every command that changes a component ends with it. Offer it, and run it, whenever someone asks whether component changes can merge, including changes a developer made by hand: it finds the change from git and holds it to the same standard.
 
 ## Run
 

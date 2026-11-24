@@ -52,3 +52,14 @@ test('components at their real size, the ground colour marked as such, breakpoin
   assert.match(html, /<strong>bg<\/strong> #ffffff · the ground/);
   assert.match(html, /screens 768px and wider/);
 });
+
+test('open findings per component: saved review findings and stories failing the last run, worst level first', async () => {
+  const { openFindings } = await import('../lib/catalogue.mjs');
+  const review = { Button: { findings: [{ rank: 'should-fix', what: 'Raw colour in hover' }] }, chip: { findings: [] } };
+  const f = openFindings(review, run);
+  assert.deepEqual(f.Button, { count: 1, worst: 'should-fix', items: ['Raw colour in hover'] });
+  assert.equal(f.Chip.count, 1); assert.equal(f.Chip.worst, 'blocking'); assert.match(f.Chip.items[0], /Default fails a check/);
+  const { html } = renderCatalogue({ design, run, findings: f });
+  assert.match(html, /1 open finding/);
+  assert.match(html, /<details><summary>What is open<\/summary><ul><li>Raw colour in hover<\/li>/);
+});
