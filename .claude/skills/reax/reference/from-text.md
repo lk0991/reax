@@ -4,7 +4,7 @@ Build a component from a plain-text description.
 
 ## Steps
 
-1. **Find out what the build will need, without asking yet.** Run `design.mjs check`, `setup.mjs --check --root <project>`, and look for Storybook (`package.json`, `.storybook/`). Read the component inventory: if the project already has this component (check `_aliases.md`), stop and say so, and offer `review` or a new variant. Do not overwrite.
+1. **Find out what the build will need, without asking yet.** Run `design.mjs check`, `setup.mjs --check --root <project>`, and look for Storybook (`package.json`, `.storybook/`). Read the component inventory: if the project already has this component (check `_aliases.md`), do not write a new one: say so and offer [change](change.md) (a new variant, size, state or fix of the existing one) or `review`. Do not overwrite.
 2. **Load the card** for the component, resolved through `components/_aliases.md`, and `components/_rules.md`. Components with no card use `_rules.md` only. Compound requests (a form with fields and a submit button) load a card per part, at most about six.
 3. **Ask once: the component questions and the plan together.** One round, asked together (the question tool if available, otherwise plain text), each with a recommended answer:
    - **The component:** what it is for, which variants and sizes, which states and features (the card's states list is the menu). Skip a question the request already answers. Check the request for what the card marks as required (a Dialog needs a title; an Input needs a label).

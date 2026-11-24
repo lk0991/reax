@@ -62,3 +62,10 @@ test('without boxes, the whole capture is shown', () => {
   assert.equal(m.changed[0].captures[0].crop, null);
   assert.ok(!/class="crop"/.test(renderBeforeAfter(m)));
 });
+
+test('new stories are cropped to their content too', () => {
+  const r = structuredClone(run);
+  Object.assign(r.stories[2].captures[0], { size: { w: 390, h: 844 }, content: { x: 16, y: 16, w: 80, h: 40 } });
+  const html = renderBeforeAfter(beforeAfter(r, baselines));
+  assert.match(html, /class="crop"[^>]*><img src="screenshots\/components-button--large\/mobile-390\.png"/);
+});

@@ -32,7 +32,7 @@ export function beforeAfter(run, baselines = {}) {
   const changed = []; const unchanged = []; const added = []; const copies = []; const files = [];
   for (const s of run.stories) {
     const has = baselines[s.id] || [];
-    if (!has.length) { added.push({ id: s.id, title: s.title, name: s.name, after: s.captures.find((c) => c.screenshot)?.screenshot || null }); if (added.at(-1).after) files.push(added.at(-1).after); continue; }
+    if (!has.length) { const first = s.captures.find((c) => c.screenshot); added.push({ id: s.id, title: s.title, name: s.name, after: first?.screenshot || null, crop: first ? cropOf({ ...first, diff: null }) : null }); if (first) files.push(first.screenshot); continue; }
     const caps = s.captures.filter((c) => c.baseline === 'changed' && c.screenshot && has.includes(c.viewport)).map((c) => {
       const before = `before/${s.id}/${c.viewport}.png`;
       copies.push({ from: `.reax/baselines/${s.id}/${c.viewport}.png`, to: before });
@@ -64,7 +64,7 @@ export function renderBeforeAfter(m) {
   const parts = [`<h2 id="ba-h">Before and after</h2>`];
   if (!m.changed.length && !m.added.length && !m.removed.length) parts.push('<p>Nothing looks different from the approved screenshots.</p>');
   parts.push(...m.changed.map(pair));
-  if (m.added.length) parts.push(`<article class="ba-story"><h3>New stories, with nothing approved to compare against</h3><div class="ba-pair">${m.added.map((s) => (s.after ? `<figure><img src="${esc(s.after)}" alt="${esc(`${s.name}, new`)}" loading="lazy"><figcaption>${esc(s.title)} / ${esc(s.name)}</figcaption></figure>` : `<p>${esc(s.title)} / ${esc(s.name)}</p>`)).join('')}</div></article>`);
+  if (m.added.length) parts.push(`<article class="ba-story"><h3>New stories, with nothing approved to compare against</h3><div class="ba-pair">${m.added.map((s) => (s.after ? `<figure>${shot(s.after, `${s.name}, new`, s.crop)}<figcaption>${esc(s.title)} / ${esc(s.name)}</figcaption></figure>` : `<p>${esc(s.title)} / ${esc(s.name)}</p>`)).join('')}</div></article>`);
   if (m.removed.length) parts.push(`<p class="ba-note">Approved screenshots for stories that no longer exist (removed, or renamed): ${m.removed.map(esc).join(', ')}.</p>`);
   if (m.unchanged.length) parts.push(`<p class="ba-note">Checked, unchanged: ${m.unchanged.map((s) => `${esc(s.title.split('/').pop())} / ${esc(s.name)}`).join(', ')}.</p>`);
   return `<style>${CSS}</style><section class="ba" aria-labelledby="ba-h">${parts.join('\n')}</section>`;
