@@ -55,3 +55,12 @@ test('a part marked as the screen\'s own content (a heading, copy, layout) is ne
   assert.deepEqual(p.parts.map((x) => x.status), ['own', 'match']);
   assert.deepEqual(p.gaps, []);
 });
+
+test('screenName makes a component-style name, and falls back when nothing usable is left', async () => {
+  const { screenName } = await import('../lib/screens.mjs');
+  assert.equal(screenName("today's sightings"), 'TodaysSightings');
+  assert.equal(screenName('sign in'), 'SignIn');
+  assert.equal(screenName('!!!'), 'Screen');
+  assert.equal(screenName('日本語'), 'Screen');
+  assert.equal(screenName(undefined), 'Screen');
+});

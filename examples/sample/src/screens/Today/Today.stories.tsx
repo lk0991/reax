@@ -22,7 +22,7 @@ type Story = StoryObj<typeof meta>;
 export const Loaded: Story = {};
 export const Empty: Story = { args: { sightings: [] } };
 export const Loading: Story = { args: { status: 'loading' } };
-export const Error: Story = { args: { status: 'error', errorMessage: 'The sightings could not be loaded. Check your connection and try again.' } };
+export const ErrorState: Story = { name: 'Error', args: { status: 'error', errorMessage: 'The sightings could not be loaded. Check your connection and try again.' } };
 export const LongContent: Story = {
   args: { sightings: [{ id: '9', species: 'Black-tailed godwit (Icelandic race, in full summer plumage)', detail: 'about 340, spread across the whole of the eastern scrape and the flooded meadow beyond it, 07:55 to 09:30', initials: 'BG' }, ...sightings] },
 };

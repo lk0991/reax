@@ -37,3 +37,9 @@ export function screensDir(sidecar = {}) {
   const comps = sidecar.scan?.componentsDir || sidecar.conventions?.componentsDir;
   return comps ? path.posix.join(path.posix.dirname(comps), 'screens') : 'src/screens';
 }
+
+/** A component-style name for a screen ("today's sightings" becomes TodaysSightings); "Screen" when nothing usable is left. */
+export function screenName(raw) {
+  const n = String(raw ?? '').replace(/['\u2019]/g, '').replace(/[^A-Za-z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : '')).replace(/^./, (c) => c.toUpperCase());
+  return /^[A-Za-z]/.test(n) ? n : 'Screen';
+}

@@ -71,7 +71,7 @@ test('stories titled Screens/... are shown under their own heading, apart from c
   const { html } = renderCatalogue({ design, run: r, deviations: {} });
   const compAt = html.indexOf('<h2>Components</h2>'); const screenAt = html.indexOf('<h2>Screens</h2>');
   assert.ok(compAt > 0 && screenAt > compAt, 'a Screens section after Components');
-  assert.ok(html.indexOf('id="c-today"') > screenAt, 'Today is under Screens');
+  assert.ok(html.indexOf('id="s-today"') > screenAt, 'Today is under Screens');
   assert.ok(html.indexOf('id="c-button"') < screenAt, 'Button stays under Components');
   assert.match(html, /A screen, built from the project's components/);
   assert.match(html, /Loaded/); assert.match(html, /Empty/);
@@ -79,4 +79,12 @@ test('stories titled Screens/... are shown under their own heading, apart from c
 
 test('with no screens there is no Screens section', () => {
   assert.ok(!renderCatalogue({ design, run }).html.includes('<h2>Screens</h2>'));
+});
+
+test('a screen and a component with the same name get different anchors', () => {
+  const r = structuredClone(run);
+  r.stories.push({ id: 'screens-button--loaded', title: 'Screens/Button', name: 'Loaded', result: 'pass', captures: [cap('screens-button--loaded', 'mobile-390')] });
+  const { html } = renderCatalogue({ design, run: r, deviations: {} });
+  assert.equal((html.match(/id="c-button"/g) || []).length, 1);
+  assert.equal((html.match(/id="s-button"/g) || []).length, 1);
 });

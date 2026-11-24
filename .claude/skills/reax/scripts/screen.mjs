@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs, findUp } from './lib/runtime.mjs';
 import { loadDesign } from './lib/design.mjs';
-import { planScreen, screensDir } from './lib/screens.mjs';
+import { planScreen, screensDir, screenName } from './lib/screens.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const [cmd] = args._;
@@ -22,6 +22,6 @@ if (!Array.isArray(spec.parts) || !spec.parts.length) out({ ok: false, error: 'T
 const design = loadDesign(root, { root });
 if (!design.exists.design) out({ ok: false, error: 'DESIGN.md does not exist. Run direction or init first.' }, 1);
 const plan = planScreen(spec.parts, design);
-const name = String(spec.name || 'Screen').replace(/[^A-Za-z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : '')).replace(/^./, (c) => c.toUpperCase());
+const name = screenName(spec.name);
 const dir = screensDir(design.sidecar || {});
 out({ ok: true, screen: name, folder: `${dir}/${name}`, storyTitle: `Screens/${name}`, states: ['Loaded', 'Empty', 'Loading', 'Error', 'LongContent'], ...plan, ready: plan.gaps.length === 0 });

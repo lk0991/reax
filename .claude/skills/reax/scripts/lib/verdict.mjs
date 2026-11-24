@@ -24,14 +24,14 @@ export function dependencyChanges(before = {}, after = {}) {
 /** Which components a change touches, and what it touches outside them. */
 export function classifyScope(files, { componentsDir = 'src/components', screensDir = null, tokenFiles = [] } = {}) {
   const dirs = [componentsDir, screensDir].filter(Boolean).map((d) => d.replace(/\/$/, '') + '/');
-  const components = new Set(); const outside = []; const global = [];
+  const components = new Set(); const screens = new Set(); const outside = []; const global = [];
   for (const f of files) {
     const dir = dirs.find((d) => f.startsWith(d));
-    if (dir) { const rest = f.slice(dir.length); const name = rest.includes('/') ? rest.split('/')[0] : path.posix.basename(rest).replace(/\..*$/, ''); if (rest.includes('/') || /^[A-Z]/.test(name)) components.add(name); continue; }
+    if (dir) { const rest = f.slice(dir.length); const name = rest.includes('/') ? rest.split('/')[0] : path.posix.basename(rest).replace(/\..*$/, ''); if (rest.includes('/') || /^[A-Z]/.test(name)) (dir === dirs[0] ? components : screens).add(name); continue; }
     outside.push(f);
     if (/\.(css|scss|sass|less)$/.test(f) || /^\.storybook\/preview\./.test(f) || tokenFiles.includes(f)) global.push(f);
   }
-  return { components: [...components].sort(), outsideComponents: outside, globalStyles: global };
+  return { components: [...components].sort(), screens: [...screens].sort(), outsideComponents: outside, globalStyles: global };
 }
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -70,6 +70,8 @@ export function decide(e) {
       for (const d of c.deviations || []) concerns.push(`${d.component} breaks a project convention: ${d.label}`);
       const n = (c.deviations || []).length;
       line(key, label, n ? 'concern' : 'pass', n ? `${plural(n, 'place')} where the code is written differently from the rest of the project.` : 'The code is written the way the project\'s other components are.', (c.deviations || []).map((d) => `${d.component}: ${d.label} (expected ${JSON.stringify(d.expected)}, found ${JSON.stringify(d.found)})`).join('\n'));
+    } else if (key === 'fit' && c.status === 'n/a') {
+      line(key, label, 'info', c.note || 'No style or component code changed, so there was nothing to check.');
     } else if (key === 'fit') {
       const fs = c.findings || [];
       for (const f of fs) concerns.push(`${f.file}:${f.line} ${f.message}`);
@@ -90,7 +92,9 @@ export function decide(e) {
   for (const d of depLines) concerns.push(`The change ${d}.`);
   for (const f of unexpectedGlobal) concerns.push(`The change edits a style that applies everywhere: ${f}.`);
   for (const f of unexpectedOutside) concerns.push(`The change touches a file outside the components: ${f}.`);
-  const touched = `${plural((scope.changedFiles || []).length, 'file')} in ${(scope.components || []).length ? `${plural(scope.components.length, 'component')} (${scope.components.join(', ')})` : 'no component'}`;
+  const comps = scope.components || []; const scr = scope.screens || [];
+  const what = [comps.length ? `${plural(comps.length, 'component')} (${comps.join(', ')})` : '', scr.length ? `${plural(scr.length, 'screen')} (${scr.join(', ')})` : ''].filter(Boolean).join(' and ') || 'no component';
+  const touched = `${plural((scope.changedFiles || []).length, 'file')} in ${what}`;
   const surprises = depLines.length + unexpectedGlobal.length + unexpectedOutside.length;
   line('scope', 'Scope', surprises ? 'concern' : 'pass', surprises ? `The change touches ${touched}, and goes further than the components: ${[...depLines, ...unexpectedGlobal, ...unexpectedOutside].join('; ')}.` : `The change touches ${touched} and nothing unexpected.`, (scope.changedFiles || []).join('\n'));
 

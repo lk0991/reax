@@ -66,6 +66,25 @@ test('a project with no tokens gets a named gap, not a pass', () => {
 });
 
 test('files that are not code (images, json) and an empty change are not checked', () => {
-  assert.equal(fitCheck([], design).status, 'not-run');
-  assert.equal(fitCheck([{ path: 'a.json', text: '{"c":"#fff"}' }], design).status, 'not-run');
+  // nothing to check is not a gap: there is no code that could stray
+  assert.equal(fitCheck([], design).status, 'n/a');
+  assert.equal(fitCheck([{ path: 'a.json', text: '{"c":"#fff"}' }], design).status, 'n/a');
+});
+
+test('primary buttons are counted from the whole opening tag, arrow functions in props included', () => {
+  const secondary = run('S.tsx', `<Button onClick={() => save()} variant="secondary">Cancel</Button>\n<Button onClick={() => { go(); }}>Save</Button>\n`);
+  assert.equal(secondary.status, 'pass', JSON.stringify(secondary.findings));
+  const two = run('S.tsx', `<Button onClick={(e) => e.stopPropagation()} variant="primary">A</Button>\n<Button\n  onClick={() => go()}\n  disabled={a > b}\n>B</Button>\n`);
+  assert.deepEqual(kinds(two), ['primary-action']);
+});
+
+test('HTML entities and in-page anchors are not colours', () => {
+  const r = run('a.tsx', `<p>Don&#8217;t &#8212; stop</p>\n<a href="#add">add</a>\n<a href={'#fade'}>fade</a>\n`);
+  assert.equal(r.status, 'pass', JSON.stringify(r.findings));
+  assert.equal(run('a.tsx', `const c = { color: '#fade00' };\n`).findings.length, 1);
+});
+
+test('a mixed value (a token and a raw length) and !important are still checked', () => {
+  const r = run('a.css', `.a { padding: var(--gap-2) 13px; margin: 13px!important; padding-left: calc(1rem + 5px); }\n`);
+  assert.deepEqual(r.findings.filter((f) => f.kind === 'spacing').map((f) => f.found), ['13px', '13px']);
 });

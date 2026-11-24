@@ -135,6 +135,20 @@ test('without a fit check in the evidence (an older record), it is a named gap, 
 
 test('classifyScope counts a screen in the screens directory as a component of the change, not as a file outside', () => {
   const s = classifyScope(['src/screens/Today/Today.tsx', 'src/screens/Today/Today.css', 'src/components/Button/Button.css', 'src/styles/global.css'], { componentsDir: 'src/components', screensDir: 'src/screens' });
-  assert.deepEqual(s.components, ['Button', 'Today']);
+  assert.deepEqual(s.components, ['Button']);
+  assert.deepEqual(s.screens, ['Today']);
   assert.deepEqual(s.outsideComponents, ['src/styles/global.css']);
+});
+
+test('a fit check with nothing to check is shown as such, not as a gap', () => {
+  const e = good(); e.checks.fit = { status: 'n/a', findings: [] };
+  const v = decide(e);
+  assert.equal(v.level, 'ready');
+  assert.ok(v.lines.some((l) => l.check === 'fit' && /nothing to check/i.test(l.plain)));
+});
+
+test('the scope line names screens apart from components', () => {
+  const e = good(); e.scope.screens = ['Today'];
+  const v = decide(e);
+  assert.ok(v.lines.some((l) => l.check === 'scope' && /1 component \(Button\) and 1 screen \(Today\)/.test(l.plain)));
 });

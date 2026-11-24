@@ -36,7 +36,12 @@ const outDir = path.join(root, 'visual-report', 'verdict');
 const changed = changedFiles(root, { base: config.baseBranch }) || [];
 const componentsDir = sidecar.scan?.componentsDir || sidecar.conventions?.componentsDir || 'src/components';
 const scope = { base: changed.base || null, changedFiles: [...changed], ...classifyScope([...changed], { componentsDir, screensDir: screensDir(sidecar), tokenFiles: sidecar.scan?.tokenFiles || [] }), expected: args.expect ? String(args.expect).split(',').map((s) => s.trim()) : [] };
-if (args.component) scope.components = String(args.component).split(',').map((s) => s.trim());
+if (args.component) {
+  const names = String(args.component).split(',').map((s) => s.trim());
+  const isScreen = (n) => fs.existsSync(path.join(root, screensDir(sidecar), n));
+  scope.components = names.filter((n) => !isScreen(n)); scope.screens = names.filter(isScreen);
+}
+const everyName = () => [...scope.components, ...scope.screens];
 const show = (rev) => { const r = spawnSync('git', ['-C', root, 'show', `${rev}:./package.json`], { encoding: 'utf8' }); try { return r.status === 0 ? JSON.parse(r.stdout) : null; } catch { return null; } };
 const before = show(changed.base ? spawnSync('git', ['-C', root, 'merge-base', changed.base, 'HEAD'], { encoding: 'utf8' }).stdout.trim() || changed.base : 'HEAD');
 scope.dependencies = before ? dependencyChanges(before, readJson(path.join(root, 'package.json'), {})) : { added: [], changed: [], removed: [] };
@@ -63,8 +68,8 @@ function visualTest() {
   if (args['no-visual']) return { status: 'not-run', reason: 'The visual test was skipped for this verdict.', howTo: 'Run the verdict without --no-visual.' };
   // a style that applies everywhere (a token file included, expected or not) can move any component
   const all = scope.globalStyles.length > 0;
-  if (!all && !scope.components.length) return { status: 'not-run', reason: 'No component changed, so there was nothing to render.', howTo: 'Name the components with --component.' };
-  const which = all ? ['--all'] : ['--component', scope.components.join(',')];
+  if (!all && !everyName().length) return { status: 'not-run', reason: 'No component or screen changed, so there was nothing to render.', howTo: 'Name the components or screens with --component.' };
+  const which = all ? ['--all'] : ['--component', everyName().join(',')];
   log(`Visual test: ${which.join(' ')}`);
   const r = spawnSync(process.execPath, [path.join(HERE, 'visual-test.mjs'), '--root', root, ...which], { encoding: 'utf8', timeout: 1_800_000 });
   let summary; try { summary = JSON.parse(r.stdout); } catch { summary = null; }
@@ -91,7 +96,7 @@ function lint() {
 const review = readJson(path.join(root, 'visual-report', 'review.json'), {}) || {};
 const changedAt = {};
 for (const f of scope.changedFiles) {
-  const c = classifyScope([f], { componentsDir, screensDir: screensDir(sidecar) }).components[0]; if (!c) continue;
+  const k = classifyScope([f], { componentsDir, screensDir: screensDir(sidecar) }); const c = k.components[0] || k.screens[0]; if (!c) continue;
   try { changedAt[c] = Math.max(changedAt[c] || 0, fs.statSync(path.join(root, f)).mtimeMs); } catch { /* deleted */ }
 }
 
@@ -101,7 +106,7 @@ const reviewerFile = path.join(outDir, 'reviewer.json');
 
 const evidence = { createdAt: new Date().toISOString(), root: path.basename(root), scope, checks: {
   typecheck: typecheck(), lint: lint(), visualTest: visualTest(),
-  review: scope.components.length ? reviewEvidence(review, scope.components, changedAt) : { status: 'not-run', reason: 'No component changed.', howTo: 'Name the components with --component.' },
+  review: everyName().length ? reviewEvidence(review, everyName(), changedAt) : { status: 'not-run', reason: 'No component or screen changed.', howTo: 'Name them with --component.' },
   conventions: conventionsEvidence(root, sidecar.conventions || null, scope.components, review),
   fit: fitEvidence(root, scope.changedFiles, { componentsDir, screensDir: screensDir(sidecar), tokenFiles: sidecar.scan?.tokenFiles || [] }, loadDesign(root, { root })),
   reviewer: reviewerEvidence(readJson(reviewerFile, null), hash),
@@ -116,7 +121,7 @@ if (args.packet) {
   const cards = [...new Set(scope.components.map((c) => cardFor(c, sidecar)).filter(Boolean))].map((c) => path.join(HERE, '..', 'components', `${c}.md`));
   const files = [...['COMPONENTS.md', 'DESIGN.md'].filter((f) => fs.existsSync(path.join(root, f))), ...cards.map((f) => rel(f)), rel(path.join(HERE, '..', 'components', '_rules.md'))];
   const run = readJson(path.join(root, 'visual-report', 'run.json'), { stories: [] });
-  const shots = run.stories.filter((s) => scope.components.some((c) => c.toLowerCase() === s.title.split('/').pop().trim().toLowerCase())).flatMap((s) => s.captures.filter((c) => c.screenshot && ['mobile-390', 'desktop-1280'].includes(c.viewport)).map((c) => `visual-report/${c.screenshot}`));
+  const shots = run.stories.filter((s) => everyName().some((c) => c.toLowerCase() === s.title.split('/').pop().trim().toLowerCase())).flatMap((s) => s.captures.filter((c) => c.screenshot && ['mobile-390', 'desktop-1280'].includes(c.viewport)).map((c) => `visual-report/${c.screenshot}`));
   packet = path.join(outDir, 'review-packet.md');
   fs.writeFileSync(packet, reviewerPacket({ diff, hash, files, evidence: 'visual-report/verdict/evidence.json', screenshots: shots, out: 'visual-report/verdict/reviewer.json' }));
 }
