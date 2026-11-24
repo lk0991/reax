@@ -3,7 +3,7 @@ name: reax
 description: Generate, review and visually test React UI components that follow the project's own design system, or give a project without one a look of its own. Use when asked to build a React component from a text description or a Figma or image design, to review a project's React components against its design system and WCAG (not general page or design audits), to set up Storybook, to run visual and accessibility tests with screenshots, or to open a live preview where a person can try a component, comment on elements and edit tokens. Also use to create or refresh DESIGN.md, or to choose a visual direction (a look of its own, not a generic default) for a project that has no design system yet.
 version: 0.1.0
 user-invocable: true
-argument-hint: "[direction|init|from-figma|from-text|change|tokens|review|storybook|visual-test|improve|verdict] [details]"
+argument-hint: "[direction|init|from-figma|from-text|screen|change|tokens|review|storybook|visual-test|improve|verdict] [details]"
 license: MIT
 ---
 
@@ -23,6 +23,7 @@ The first word of the request picks the command. With no command, infer it from 
 | `init` | Scan the project and write `DESIGN.md`, `COMPONENTS.md` and `.reax/design.json` | [reference/init.md](reference/init.md) |
 | `from-text` | Build a component from a text description | [reference/from-text.md](reference/from-text.md) |
 | `from-figma` | Build a component from an image, screenshot or Figma link | [reference/from-figma.md](reference/from-figma.md) |
+| `screen` | Build a whole screen from the project's components, filling gaps with approval, and check it fits the product | [reference/screen.md](reference/screen.md) |
 | `change` | Add a variant, size or state to an existing component, or fix one, and show what moved | [reference/change.md](reference/change.md) |
 | `tokens` | Change token values, see every affected component before and after, then keep or undo | [reference/tokens.md](reference/tokens.md) |
 | `review` | Audit existing components, findings to chat and `visual-report/review.json` | [reference/review.md](reference/review.md) |
@@ -88,6 +89,7 @@ All scripts live in `scripts/`, run with Node 20 or newer, and print JSON or Mar
 - `design.mjs`: `check`, `load`, `tokens`, `write`, `diff`
 - `conventions.mjs`: learns the project's component conventions, for `init`
 - `direction.mjs`: `check`, `specimen`, `commit`, for `direction`
+- `screen.mjs`: matches a screen's parts to the project's components and lists the gaps, for `screen`
 - `verdict.mjs`: gathers the evidence for a change and writes the quality verdict
 - `approve.mjs`: approves a verdict (Baselines, approval record) and writes the pull request description
 - `token-change.mjs`: plans, tries, keeps or undoes token value changes, for `tokens`
