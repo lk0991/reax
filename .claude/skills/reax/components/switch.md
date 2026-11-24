@@ -26,12 +26,20 @@ With and without a status label; label at the start or end.
 ## States, mapped to stories
 off, on, disabled off, disabled on, focus-visible, loading, long label, 320px, 200% text.
 
-## MUST
-- Name from the label. State exposed as checked.
+## Requirements
+- Name from the label; state exposed as checked (4.1.2).
+- On and off are told apart by more than colour: thumb position, a text status or an icon (1.4.1).
+- Target at least 24×24 px (2.5.8).
+
+## Defaults
 - The label does not change when the state changes ("Notifications", not "Turn notifications on").
-- On and off are told apart by more than colour (thumb position, a text status, or an icon).
-- Target is the whole row, track at least 24px tall.
-- Effect is immediate. If it cannot be, use a checkbox.
+- The whole row is the target, and the track is at least 24px tall.
+- The effect is immediate. If it cannot be, use a checkbox.
+
+
+## Keyboard checks
+Run by `visual-test`, besides the shared checks in `_rules.md`.
+- `space-toggles`: Space changes the checked state (2.1.1).
 
 ## Mobile
 Row full width, label wraps, track keeps its size.

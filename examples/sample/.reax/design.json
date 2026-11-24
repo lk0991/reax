@@ -1,0 +1,533 @@
+{
+  "schemaVersion": 1,
+  "scan": {
+    "tokenFiles": [
+      "src/styles/tokens.css"
+    ],
+    "componentsDir": "src/components",
+    "screensDir": "src/screens",
+    "scannedAt": "2026-11-24T20:20:02.437Z",
+    "hashes": {
+      "tokens": "a16696f98d8af8b09a4a166b1e8dbd3cf4bf3dde",
+      "components": "7b9bd06fcccbc3469ee6378898d44e00cc04ccb2"
+    },
+    "hashVersion": 2
+  },
+  "conventions": {
+    "componentsDir": "src/components",
+    "scanned": 4,
+    "components": [
+      {
+        "name": "Button",
+        "path": "src/components/Button",
+        "files": [
+          "Button.css",
+          "Button.stories.tsx",
+          "Button.tsx",
+          "index.ts"
+        ]
+      },
+      {
+        "name": "Chip",
+        "path": "src/components/Chip",
+        "files": [
+          "Chip.css",
+          "Chip.stories.tsx",
+          "Chip.tsx",
+          "index.ts"
+        ]
+      },
+      {
+        "name": "Dialog",
+        "path": "src/components/Dialog",
+        "files": [
+          "Dialog.css",
+          "Dialog.stories.tsx",
+          "Dialog.tsx",
+          "index.ts"
+        ]
+      },
+      {
+        "name": "ProfileCard",
+        "path": "src/components/ProfileCard",
+        "files": [
+          "ProfileCard.css",
+          "ProfileCard.stories.tsx",
+          "ProfileCard.tsx",
+          "index.ts"
+        ]
+      }
+    ],
+    "layout": {
+      "folderPerComponent": {
+        "value": true,
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "folderCase": {
+        "value": "PascalCase",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "files": {
+        "value": [
+          "{Name}.css",
+          "{Name}.stories.tsx",
+          "{Name}.tsx",
+          "index.ts"
+        ],
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "fileCase": {
+        "value": "PascalCase",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      }
+    },
+    "code": {
+      "definition": {
+        "value": "function",
+        "count": 3,
+        "total": 4,
+        "share": 0.75,
+        "examples": [
+          "Chip",
+          "Dialog",
+          "ProfileCard"
+        ],
+        "status": "convention",
+        "exceptions": [
+          "Button"
+        ]
+      },
+      "export": {
+        "value": "named",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "propsType": {
+        "value": "interface {Name}Props",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "propsExtendNative": {
+        "value": false,
+        "count": 3,
+        "total": 4,
+        "share": 0.75,
+        "examples": [
+          "Chip",
+          "Dialog",
+          "ProfileCard"
+        ],
+        "status": "convention",
+        "exceptions": [
+          "Button"
+        ]
+      },
+      "jsdocOnProps": {
+        "value": true,
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "indexExports": {
+        "value": "export *",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      }
+    },
+    "styling": {
+      "approach": {
+        "value": "plain-css",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "variantSelector": {
+        "value": "data-attribute",
+        "count": 1,
+        "total": 1,
+        "share": 1,
+        "examples": [
+          "Button"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "classNaming": {
+        "value": "BEM",
+        "count": 3,
+        "total": 4,
+        "share": 0.75,
+        "examples": [
+          "Chip",
+          "Dialog",
+          "ProfileCard"
+        ],
+        "status": "convention",
+        "exceptions": [
+          "Button"
+        ]
+      },
+      "dataSlot": {
+        "value": true,
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "tokenUsage": {
+        "customProperties": 33,
+        "rawColours": 3
+      }
+    },
+    "props": {
+      "emphasis": {
+        "value": "variant",
+        "count": 1,
+        "total": 1,
+        "share": 1,
+        "examples": [
+          "Button"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "size": {
+        "status": "none",
+        "value": null,
+        "count": 0,
+        "total": 0
+      },
+      "booleanPrefix": {
+        "value": "none",
+        "count": 2,
+        "total": 2,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "pressHandler": {
+        "status": "none",
+        "value": null,
+        "count": 0,
+        "total": 0
+      },
+      "common": [
+        {
+          "name": "bio",
+          "count": 1
+        },
+        {
+          "name": "initials",
+          "count": 1
+        },
+        {
+          "name": "label",
+          "count": 1
+        },
+        {
+          "name": "loading",
+          "count": 1
+        },
+        {
+          "name": "name",
+          "count": 1
+        },
+        {
+          "name": "onOpenChange",
+          "count": 1
+        },
+        {
+          "name": "onRemove",
+          "count": 1
+        },
+        {
+          "name": "open",
+          "count": 1
+        },
+        {
+          "name": "variant",
+          "count": 1
+        }
+      ]
+    },
+    "stories": {
+      "present": {
+        "value": true,
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "format": {
+        "value": "csf3-satisfies",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "titlePrefix": {
+        "value": "Components",
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "tags": {
+        "value": [],
+        "count": 4,
+        "total": 4,
+        "share": 1,
+        "examples": [
+          "Button",
+          "Chip",
+          "Dialog"
+        ],
+        "status": "convention",
+        "exceptions": []
+      },
+      "storyShape": {
+        "value": "args",
+        "count": 3,
+        "total": 4,
+        "share": 0.75,
+        "examples": [
+          "Button",
+          "Dialog",
+          "ProfileCard"
+        ],
+        "status": "convention",
+        "exceptions": [
+          "Chip"
+        ]
+      }
+    }
+  },
+  "tokenSources": {
+    "colors.primary": {
+      "file": "src/styles/tokens.css",
+      "line": 4,
+      "css": "--brand-blue-500"
+    },
+    "colors.primary-strong": {
+      "file": "src/styles/tokens.css",
+      "line": 5,
+      "css": "--brand-blue-700"
+    },
+    "colors.on-surface": {
+      "file": "src/styles/tokens.css",
+      "line": 6,
+      "css": "--ink-900"
+    },
+    "colors.on-surface-muted": {
+      "file": "src/styles/tokens.css",
+      "line": 7,
+      "css": "--ink-600"
+    },
+    "colors.surface": {
+      "file": "src/styles/tokens.css",
+      "line": 8,
+      "css": "--paper"
+    },
+    "colors.surface-sunken": {
+      "file": "src/styles/tokens.css",
+      "line": 9,
+      "css": "--paper-sunken"
+    },
+    "colors.danger": {
+      "file": "src/styles/tokens.css",
+      "line": 10,
+      "css": "--danger-600"
+    },
+    "colors.focus": {
+      "file": "src/styles/tokens.css",
+      "line": 11,
+      "css": "--focus-ring"
+    },
+    "spacing.xs": {
+      "file": "src/styles/tokens.css",
+      "line": 12,
+      "css": "--gap-1"
+    },
+    "spacing.sm": {
+      "file": "src/styles/tokens.css",
+      "line": 13,
+      "css": "--gap-2"
+    },
+    "spacing.md": {
+      "file": "src/styles/tokens.css",
+      "line": 14,
+      "css": "--gap-3"
+    },
+    "spacing.lg": {
+      "file": "src/styles/tokens.css",
+      "line": 15,
+      "css": "--gap-4"
+    },
+    "spacing.size.44": {
+      "file": "src/styles/tokens.css",
+      "line": 21,
+      "css": "--target-min"
+    },
+    "spacing.breakpoint.md": {
+      "file": "src/styles/tokens.css",
+      "line": 22,
+      "css": "--bp-tablet"
+    },
+    "rounded.sm": {
+      "file": "src/styles/tokens.css",
+      "line": 16,
+      "css": "--corner-s"
+    },
+    "rounded.md": {
+      "file": "src/styles/tokens.css",
+      "line": 17,
+      "css": "--corner-m"
+    },
+    "typography.body": {
+      "file": "src/styles/tokens.css",
+      "line": 18,
+      "css": "--type-body"
+    },
+    "typography.small": {
+      "file": "src/styles/tokens.css",
+      "line": 19,
+      "css": "--type-small"
+    },
+    "typography.title": {
+      "file": "src/styles/tokens.css",
+      "line": 20,
+      "css": "--type-title"
+    }
+  },
+  "language": {
+    "framework": "react 18",
+    "styling": "css-vars",
+    "naming": "PascalCase folders, data-slot on every part"
+  },
+  "inventory": [
+    {
+      "name": "Button",
+      "path": "src/components/Button",
+      "card": "button"
+    },
+    {
+      "name": "Chip",
+      "path": "src/components/Chip",
+      "card": null
+    },
+    {
+      "name": "Dialog",
+      "path": "src/components/Dialog",
+      "card": "dialog"
+    },
+    {
+      "name": "ProfileCard",
+      "path": "src/components/ProfileCard",
+      "card": null
+    }
+  ],
+  "shadows": {},
+  "themes": []
+}

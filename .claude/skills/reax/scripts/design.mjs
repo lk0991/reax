@@ -17,7 +17,7 @@ const root = args.root || process.cwd();
 function summary(d) {
   return {
     root: d.root, designPath: d.designPath, exists: d.exists, meta: d.meta, sections: d.sections?.map((s) => s.name),
-    tokens: Object.fromEntries(Object.entries(d.tokens || {}).map(([k, t]) => [k, { value: t.resolved, css: t.css }])),
+    tokens: Object.fromEntries(Object.entries(d.tokens || {}).map(([k, t]) => [k, { value: t.resolved, css: t.css, ...(t.cssDerived ? { cssDerived: true } : {}) }])),
     language: d.language, inventory: d.inventory, tokenSources: d.tokenSources,
     stale: d.stale?.stale ? d.stale.reasons : false, gaps: d.gaps, errors: d.errors, warnings: d.warnings,
   };

@@ -27,10 +27,14 @@ Native, grouped (`optgroup`), custom listbox (opt-in).
 ## States, mapped to stories
 placeholder shown, selected, disabled, disabled option, error, focus, grouped, long option text, 320px, 200% text.
 
-## MUST
-- Visible label, `for` and `id`. Error and hint linked.
-- A custom listbox keeps DOM focus on the combobox, opens with Down, Alt+Down, Enter and Space, closes with Esc, supports Home, End and type-ahead.
-- Option text wraps or truncates with the full text available. Nothing is clipped at 200% text.
+## Requirements
+- Visible label with `for` and `id`; error and hint linked (1.3.1, 3.3.2, 3.3.1).
+- A custom listbox is fully keyboard operable and exposes its role, state and active option (2.1.1, 4.1.2).
+- Option text is not clipped at 200% text (1.4.4).
+
+## Defaults
+- A custom listbox follows the select-only combobox pattern: DOM focus stays on the combobox; Down, Alt+Down, Enter and Space open; Esc closes; Home, End and type-ahead work.
+- Long option text wraps, or truncates with the full text available.
 
 ## Mobile
 Native picker. The control fills the width.

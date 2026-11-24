@@ -32,11 +32,15 @@ Single control, group (fieldset), horizontal.
 ## States, mapped to stories
 default, with hint, required, error, disabled, group with legend, group error, long label, horizontal at 1280px and stacked at 390px, 200% text.
 
-## MUST
-- Label associated with the control. A required control has the `required` attribute and a visible marker explained in text ("required"), not only an asterisk.
-- Error text is specific and says how to fix it. It is linked and announced when it appears (`role="alert"` or a polite live region), and not by colour alone.
+## Requirements
+- Label associated with the control (1.3.1, 3.3.2).
+- A required control is marked visibly and programmatically, with the `required` attribute (3.3.2, 4.1.2).
+- An error identifies the field in text and says how to fix it when that is known (3.3.1, 3.3.3), is linked with `aria-describedby` (1.3.1), is announced when it appears (`role="alert"` or a polite live region, 4.1.3), and is not shown by colour alone (1.4.1).
+- Related controls are grouped in a fieldset with a legend (1.3.1).
+
+## Defaults
+- The required marker is explained in text ("required"), not only an asterisk.
 - Validation runs on submit or blur, not on every keystroke.
-- Related controls are grouped in a fieldset with a legend.
 
 ## Mobile
 Stacked. Label above the control. Horizontal layout only when there is room.

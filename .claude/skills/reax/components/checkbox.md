@@ -26,11 +26,20 @@ Single, group, tri-state ("select all").
 ## States, mapped to stories
 unchecked, checked, indeterminate, disabled (both values), error, focus-visible, long label that wraps, group in a fieldset, 200% text.
 
-## MUST
-- Space toggles. Visible label, and the target is the whole label row (at least 24px tall).
-- Indeterminate is set through the element's `indeterminate` property and exposed as mixed.
-- A group is a `fieldset` with a `legend`. A group error is linked to the fieldset.
-- State is never colour only: the mark is a shape.
+## Requirements
+- Space toggles (2.1.1). A visible label is associated with the input (1.3.1, 3.3.2).
+- Indeterminate is exposed as mixed, through the element's `indeterminate` property (4.1.2).
+- A group is a `fieldset` with a `legend`; a group error is linked to the fieldset (1.3.1, 3.3.1).
+- State is never colour only: the mark is a shape (1.4.1).
+- Target at least 24×24 px (2.5.8).
+
+## Defaults
+- The target is the whole label row.
+
+
+## Keyboard checks
+Run by `visual-test`, besides the shared checks in `_rules.md`.
+- `space-toggles`: Space changes the checked state (2.1.1).
 
 ## Mobile
 The row is full width and wraps. Spacing between rows keeps targets from touching.

@@ -6,7 +6,25 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { sha1, packageManager, readJson } from './runtime.mjs';
+
+/**
+ * The command that runs the project's Storybook CLI, without a subcommand. The installed binary is run with
+ * Node directly, because `yarn storybook` would run a package.json script named "storybook" (which Storybook's
+ * own init adds) instead of the binary. A configured `storybook.command` wins.
+ */
+export function storybookCommand(root, config = {}) {
+  if (config.storybook?.command) return config.storybook.command.trim().split(/\s+/);
+  try {
+    const pkgPath = createRequire(path.join(root, 'package.json')).resolve('storybook/package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    const bin = typeof pkg.bin === 'string' ? pkg.bin : pkg.bin?.storybook;
+    if (bin) return [process.execPath, path.join(path.dirname(pkgPath), bin)];
+  } catch { /* not resolvable from node_modules, for example Yarn Plug'n'Play */ }
+  const pm = packageManager(root);
+  return pm.name === 'yarn' ? ['yarn', 'exec', 'storybook'] : [...pm.exec, 'storybook'];
+}
 
 export function storybookInfo(root) {
   const configDir = ['.storybook'].map((d) => path.join(root, d)).find((d) => fs.existsSync(d)) || null;
@@ -19,14 +37,15 @@ export function storybookInfo(root) {
 }
 
 const IGNORE = new Set(['node_modules', '.git', 'storybook-static', 'visual-report', '.reax', 'dist', 'build', 'coverage']);
-const SOURCE = /\.(tsx?|jsx?|css|scss|json|mdx|html|svg)$/;
+const SOURCE = /\.(tsx?|jsx?|mjs|cjs|css|scss|sass|less|json|mdx?|html|svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|mp4|webm)$/i;
 
 /** A hash of the files a Storybook build depends on, so a build is repeated only when something changed. */
 export function sourceHash(root) {
   const files = [];
-  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (IGNORE.has(e.name)) continue; const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (SOURCE.test(e.name) || ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'].includes(e.name)) { try { if (fs.statSync(p).size < 1_000_000) files.push(p); } catch { /* unreadable: skip */ } } } };
+  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (IGNORE.has(e.name)) continue; const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (SOURCE.test(e.name) || ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'].includes(e.name)) { try { fs.statSync(p); files.push(p); } catch { /* unreadable: skip */ } } } };
   walk(root);
-  const h = sha1(''); const parts = files.sort().map((f) => `${path.relative(root, f)}:${sha1(fs.readFileSync(f))}`);
+  const h = sha1(''); // large files (images, video, fonts) count by size and modification time, so hashing stays quick
+  const parts = files.sort().map((f) => { const st = fs.statSync(f); return `${path.relative(root, f)}:${st.size > 1_000_000 ? `${st.size}-${st.mtimeMs}` : sha1(fs.readFileSync(f))}`; });
   return sha1(h + parts.join('\n'));
 }
 
@@ -34,12 +53,13 @@ export const lastLines = (text, n = 20) => text.split('\n').filter(Boolean).slic
 
 /** Build Storybook statically into a temp folder, rebuilding only when the sources changed. */
 export async function buildStatic(root, { command, log = () => {} } = {}) {
+  // command: the Storybook CLI as an argument list, from storybookCommand()
   const outDir = path.join(os.tmpdir(), 'reax', sha1(root), 'storybook-static');
   const stamp = path.join(outDir, '..', 'build.json');
   const hash = sourceHash(root); const prev = readJson(stamp, null);
   if (prev?.hash === hash && fs.existsSync(path.join(outDir, 'index.json'))) { log('Storybook build is current, reusing it.'); return { outDir, reused: true }; }
   fs.rmSync(outDir, { recursive: true, force: true }); fs.mkdirSync(path.dirname(outDir), { recursive: true });
-  const base = command ? command.split(' ') : [...packageManager(root).exec, 'storybook'];
+  const base = command || storybookCommand(root);
   log(`Building Storybook: ${base.join(' ')} build`);
   const r = spawnSync(base[0], [...base.slice(1), 'build', '-o', outDir, '--quiet'], { cwd: root, encoding: 'utf8', env: { ...process.env, STORYBOOK_DISABLE_TELEMETRY: '1', CI: '1' } });
   if (r.status !== 0) { const err = new Error('The Storybook build failed.'); err.code = 'REAX_BUILD_FAILED'; err.output = lastLines((r.stdout || '') + '\n' + (r.stderr || ''), 20); throw err; }
@@ -52,8 +72,9 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 /** Serve a static folder on 127.0.0.1 and a free port. */
 export function serveStatic(dir) {
   const server = http.createServer((req, res) => {
-    const u = new URL(req.url, 'http://x'); let p = path.join(dir, decodeURIComponent(u.pathname));
-    if (!p.startsWith(dir)) { res.writeHead(403); return res.end(); }
+    let p;
+    try { p = path.join(dir, decodeURIComponent(new URL(req.url, 'http://x').pathname)); } catch { res.writeHead(400); return res.end('bad request'); }
+    if (p !== dir && !p.startsWith(dir + path.sep)) { res.writeHead(403); return res.end(); }
     if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
     if (!fs.existsSync(p)) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' });
@@ -78,7 +99,7 @@ export async function readIndex(baseUrl) {
 /** Start `storybook dev` for the preview: loopback only, free port, no telemetry, no browser. Returns the child and its output. */
 export async function startDev(root, { port, command, startTimeoutMs = 90_000, log = () => {} } = {}) {
   const p = port || (await freePort());
-  const full = command ? command.split(' ') : [...packageManager(root).exec, 'storybook'];
+  const full = command || storybookCommand(root);
   const args = [...full.slice(1), 'dev', '-p', String(p), '--host', '127.0.0.1', '--ci', '--no-open', '--disable-telemetry'];
   log(`Starting Storybook: ${full[0]} ${args.join(' ')}`);
   const child = spawn(full[0], args, { cwd: root, detached: true, env: { ...process.env, STORYBOOK_DISABLE_TELEMETRY: '1', CI: '1', BROWSER: 'none' }, stdio: ['ignore', 'pipe', 'pipe'] });

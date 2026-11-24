@@ -28,11 +28,21 @@ Vertical, horizontal (wraps), card-style options (still radios).
 ## States, mapped to stories
 none selected, one selected, option disabled, group disabled, error, required, long labels, horizontal wrapping at 320px, 200% text.
 
-## MUST
-- Fieldset and legend name the group. Every option has a label. The row is the target.
-- Tab enters the group on the selected radio (or the first), arrows move and select. Do not reimplement this: use native inputs.
-- Group error linked with `aria-describedby` on the fieldset.
+## Requirements
+- A fieldset and legend name the group, and every option has a label (1.3.1, 3.3.2).
+- Tab enters the group and arrows move and select (2.1.1). Native radios sharing one `name` do this.
+- A group error is linked with `aria-describedby` on the fieldset (3.3.1, 1.3.1).
+- Selection is visible by more than colour (1.4.1). Targets at least 24×24 px (2.5.8).
+
+## Defaults
+- The whole label row is the target.
+- Use native inputs; do not reimplement the keyboard behaviour.
 - Prefer a `select` when there are more than about six options.
+
+
+## Keyboard checks
+Run by `visual-test`, besides the shared checks in `_rules.md`.
+- `arrows-select`: ArrowDown moves to the next radio and selects it (2.1.1).
 
 ## Mobile
 Vertical by default. Horizontal wraps rather than scrolls.

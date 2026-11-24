@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checks and installs the dependencies the reax scripts need, in a user-level cache, never in the project.
-//   node setup.mjs --check            print the status as JSON
+//   node setup.mjs --check            print the status as JSON (add --root <project> from outside the project)
 //   node setup.mjs --install          install the missing packages into the cache (ask the person first)
 //   node setup.mjs --install-browser  download Chromium through Playwright (only if no browser was found)
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { CACHE, PACKAGES, missing, chromiumPath, parseArgs, req } from './lib/runtime.mjs';
 
 const args = parseArgs(process.argv.slice(2));
-const root = process.cwd();
+const root = path.resolve(args.root || process.cwd()); // the project: its own copies of the packages count
 
 function status() {
   const miss = missing(root);

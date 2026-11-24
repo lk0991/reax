@@ -12,10 +12,12 @@ export const DEFAULTS = {
   diffThreshold: 0.001,
   axe: { tags: ['wcag2a', 'wcag2aa', 'wcag22aa', 'best-practice'], disabledRules: [], blockingImpacts: ['serious', 'critical'] },
   skipTag: 'reax-skip',
+  baseBranch: null,
+  keyboard: true,
   concurrency: 4,
   storyTimeoutMs: 30_000,
   stabilityAttempts: 3,
-  storybook: { buildCommand: null },
+  storybook: { command: null },
   preview: { startTimeoutMs: 90_000 },
 };
 
@@ -23,6 +25,7 @@ const ANIM_OFF = '*,*::before,*::after{animation:none!important;transition:none!
 
 /** Merge a project's config over the defaults, one level deep. */
 export function mergeConfig(user = {}) {
+  if (user.storybook && 'buildCommand' in user.storybook) throw new Error('.reax/visual-test.json: "storybook.buildCommand" is now "storybook.command". It is the command that runs the Storybook CLI without a subcommand, for example "pnpm exec storybook", not a build script.');
   const out = { ...DEFAULTS, ...user };
   for (const k of ['axe', 'storybook', 'preview']) out[k] = { ...DEFAULTS[k], ...(user[k] || {}) };
   return out;
@@ -41,6 +44,38 @@ async function settle(page, quietMs = 200, maxMs = 5000) {
   }), [quietMs, maxMs]);
 }
 
+/** Wait until Storybook reports the story's render, play function included, as finished. Storybook 8 and newer expose
+ * this through the preview's current render; it is not a public API, so a missing field just skips the wait. */
+async function waitForPlay(page, timeout) {
+  await page.waitForFunction(() => {
+    const r = window.__STORYBOOK_PREVIEW__?.currentRender;
+    return !r || !r.phase || ['completed', 'finished', 'errored', 'aborted'].includes(r.phase);
+  }, null, { timeout }).catch(() => { /* a play function that never ends is reported by the screenshot itself */ });
+}
+
+/** Interaction states a story asks for with a tag (reax-state-hover, -pressed, -focus). */
+export const STATE_TAGS = { 'reax-state-hover': 'hover', 'reax-state-pressed': 'pressed', 'reax-state-focus': 'focus' };
+const TARGET = '[data-reax-target], #storybook-root button, #storybook-root a[href], #storybook-root input, #storybook-root select, #storybook-root textarea, #storybook-root summary, #storybook-root [tabindex]:not([tabindex="-1"])';
+
+/** Put the story's target element into the state with real pointer and keyboard input, so CSS pseudo-classes apply. */
+async function enterState(page, state) {
+  const target = page.locator(TARGET).first();
+  if (!(await target.count())) throw new Error(`The story's reax-state-${state} tag has no element to act on. Mark one with data-reax-target.`);
+  const opts = { timeout: 5000 };
+  if (state === 'hover') await target.hover(opts);
+  if (state === 'pressed') { await target.hover(opts); await page.mouse.down(); }
+  if (state === 'focus') { await page.keyboard.press('Shift'); await target.focus(opts); }
+}
+
+/** The page-side rule for larger text, shared with the preview: multiply the project's own root font size, the way a
+ * browser's text-size setting does, instead of replacing it (a root of 62.5% becomes 125%, not 200%). */
+export const SCALE_ROOT_TEXT = (s) => {
+  const root = document.documentElement;
+  if (root.dataset.reaxBaseFont === undefined) { root.style.fontSize = ''; root.dataset.reaxBaseFont = getComputedStyle(root).fontSize; }
+  root.style.fontSize = s === 1 ? '' : `${parseFloat(root.dataset.reaxBaseFont) * s}px`;
+};
+export const scaleRootText = (page, s) => page.evaluate(SCALE_ROOT_TEXT, s);
+
 /** Font size of every element that carries its own text, with a short selector. */
 const measureText = (page) => page.evaluate(() => {
   const root = document.querySelector('#storybook-root') || document.body; const out = [];
@@ -53,28 +88,52 @@ const measureText = (page) => page.evaluate(() => {
   return out;
 });
 
+/** Open a story in its frame and wait until it has rendered and its play function has finished. Throws if it errors. */
+export async function openStory(page, baseUrl, story, config) {
+  await page.goto(`${baseUrl}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, { timeout: config.storyTimeoutMs, waitUntil: 'load' });
+  await page.waitForFunction(() => document.body.classList.contains('sb-show-main') || document.body.classList.contains('sb-show-errordisplay'), null, { timeout: config.storyTimeoutMs });
+  if (await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay'))) {
+    const msg = await page.evaluate(() => (document.querySelector('.sb-errordisplay_main, #error-message') || document.body).innerText.slice(0, 600));
+    throw Object.assign(new Error(msg.trim() || 'The story threw while rendering.'), { storyError: true });
+  }
+  await waitForPlay(page, config.storyTimeoutMs);
+}
+
+/** Run a story's keyboard and focus checks once, at the first viewport, with animations off. */
+export async function keyboardCapture({ browser, baseUrl, story, vp, config, checks, runChecks }) {
+  const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await openStory(page, baseUrl, story, config);
+    await page.addStyleTag({ content: ANIM_OFF });
+    await settle(page);
+    return await runChecks(page, checks);
+  } catch (e) {
+    return [{ id: 'error', ok: null, error: true, detail: `the checks could not run: ${String(e.message || e).split('\n')[0]}` }];
+  } finally { await context.close(); }
+}
+
 /** Take one capture. Never throws for a problem with the story: it returns { status: 'could-not-run', error }. */
 export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder }) {
   const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce', colorScheme: 'light' });
   const page = await context.newPage();
-  const result = { viewport: vp.name, status: 'ok', unstable: false, buffer: null, axe: [], textScale: [], overflow: null, error: null };
+  const result = { viewport: vp.name, status: 'ok', unstable: false, buffer: null, size: null, content: null, axe: [], textScale: [], overflow: null, error: null };
   try {
-    await page.goto(`${baseUrl}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, { timeout: config.storyTimeoutMs, waitUntil: 'load' });
-    await page.waitForFunction(() => document.body.classList.contains('sb-show-main') || document.body.classList.contains('sb-show-errordisplay'), null, { timeout: config.storyTimeoutMs });
-    if (await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay'))) {
-      const msg = await page.evaluate(() => (document.querySelector('.sb-errordisplay_main, #error-message') || document.body).innerText.slice(0, 600));
-      throw Object.assign(new Error(msg.trim() || 'The story threw while rendering.'), { storyError: true });
-    }
+    await openStory(page, baseUrl, story, config);
     await page.addStyleTag({ content: ANIM_OFF });
     await settle(page);
 
     if (vp.textScale) {
       const before = await measureText(page);
-      await page.evaluate((s) => { document.documentElement.style.fontSize = `${s * 100}%`; }, vp.textScale);
+      await scaleRootText(page, vp.textScale);
       await settle(page);
       const after = await measureText(page);
       before.forEach((b, i) => { const a = after[i]; if (!a || a.selector !== b.selector) return; const ratio = a.size / b.size; if (ratio < vp.textScale * 0.75) result.textScale.push({ selector: b.selector, text: b.text, before: b.size, after: a.size, ratio: Math.round(ratio * 100) / 100 }); });
     }
+
+    // the interaction state goes last, after any text-size change, so the pointer is still over its target
+    const state = (story.tags || []).map((t) => STATE_TAGS[t]).find(Boolean);
+    if (state) { await enterState(page, state); await settle(page); }
 
     // a screenshot must match itself before it is believed; otherwise the capture is reported as unstable
     let shot; let stable = false;
@@ -84,6 +143,14 @@ export async function capture({ browser, baseUrl, story, vp, config, AxeBuilder 
       shot = b; stable = a.equals(b); if (!stable) await sleep(200);
     }
     result.buffer = shot; result.unstable = !stable;
+    result.size = { w: shot.readUInt32BE(16), h: shot.readUInt32BE(20) };
+    // where the story's content is, for cropping a before and after to it
+    result.content = await page.evaluate(() => {
+      const root = document.querySelector('#storybook-root') || document.body; let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+      for (const el of root.querySelectorAll('*')) { const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue; x0 = Math.min(x0, r.left + scrollX); y0 = Math.min(y0, r.top + scrollY); x1 = Math.max(x1, r.right + scrollX); y1 = Math.max(y1, r.bottom + scrollY); }
+      return x1 < x0 ? null : { x: Math.max(0, Math.floor(x0)), y: Math.max(0, Math.floor(y0)), w: Math.ceil(x1 - Math.max(0, x0)), h: Math.ceil(y1 - Math.max(0, y0)) };
+    }).catch(() => null);
+    if (state === 'pressed') await page.mouse.up(); // axe and the overflow check see the page at rest
 
     const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
     result.overflow = dims.sw > dims.cw + 1 ? { scrollWidth: dims.sw, clientWidth: dims.cw } : null;

@@ -9,6 +9,6 @@
 
 ## Consequences
 
-- The project's own token files own the values. `DESIGN.md` is derived, and Edit mode changes the source file and the `DESIGN.md` entry together.
+- The project's own token files own the values. `DESIGN.md` is derived. A change to a token's value is made in the source file and `DESIGN.md` together, through the `tokens` command's trial (ADR 0008). The preview's Edit mode never changes a token's value: it swaps which token a part uses, in the component's own styles.
 - One loader reads the file and the sidecar; nothing else parses the markdown. If the spec changes (it is marked alpha), only the loader changes.
 - Two files must stay in step, so every reading command compares content hashes and warns when they have drifted.

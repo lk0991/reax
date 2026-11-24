@@ -2,13 +2,15 @@
 // reax preview helper: starts Storybook (or reuses a running one), and serves the preview page next to Storybook's own
 // frame on one local address. Decisions: ADR 0003 and the preview wiring ticket.
 //
-//   node preview.mjs                          open on the components that changed (per git)
+//   node preview.mjs                          open on the components changed on this branch or uncommitted
 //   node preview.mjs --component Button       open on named components
 //   node preview.mjs --story <id>             open on one story
 //   options: --root <dir>  --port <n>  --storybook-url <url>  (reuse a Storybook that is already running)
 //
-// Output: stdout carries one JSON object per line and nothing else, so Claude can monitor it:
+// Output: stdout carries one JSON object per line and nothing else, and the same lines go to
+// visual-report/preview-events.jsonl (follow it with preview-events.mjs):
 //   {"event":"ready","url":...}   {"event":"comment",...} (a comment "sent")   {"event":"apply",...} (an edit set sent)
+//   {"event":"stopped"} on exit, {"event":"error",...} when it cannot start
 // Progress and Storybook's own output go to stderr. The page lives under /__reax/, Storybook at the address root.
 import fs from 'node:fs';
 import http from 'node:http';
@@ -17,18 +19,25 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, req, chromiumPath, findUp, readJson, writeJson } from './lib/runtime.mjs';
-import { mergeConfig } from './lib/capture.mjs';
+import { mergeConfig, scaleRootText } from './lib/capture.mjs';
 import { selectStories } from './lib/select.mjs';
-import { storybookInfo, startDev, readIndex, freePort, lastLines, stopTree } from './lib/storybook.mjs';
+import { previewReach } from './lib/reach.mjs';
+import { storybookInfo, startDev, readIndex, freePort, lastLines, stopTree, storybookCommand } from './lib/storybook.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
 const root = findUp(path.resolve(args.root || process.cwd()), ['package.json']) || path.resolve(args.root || process.cwd());
-const config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {}));
 const outDir = path.join(root, 'visual-report');
 const log = (m) => console.error(m);
-const emit = (o) => console.log(JSON.stringify(o));
+// every event also goes to visual-report/preview-events.jsonl, which preview-events.mjs follows so an agent can be
+// woken by each one; the file starts empty for each preview
+const eventsFile = path.join(outDir, 'preview-events.jsonl');
+fs.mkdirSync(outDir, { recursive: true }); fs.writeFileSync(eventsFile, '');
+const runId = crypto.randomBytes(4).toString('hex');
+const emit = (o) => { const line = JSON.stringify({ ...o, run: runId }); console.log(line); try { fs.appendFileSync(eventsFile, line + '\n'); } catch { /* stdout still has it */ } };
 const die = (message, output) => { emit({ event: 'error', message, ...(output ? { output } : {}) }); if (output) log(output); process.exit(1); };
+let config;
+try { config = mergeConfig(readJson(path.join(root, '.reax', 'visual-test.json'), {})); } catch (e) { die(e.message); }
 
 /* ---------- Storybook: reuse or start ---------- */
 let sb; let storybook;
@@ -41,7 +50,7 @@ try {
     if (!info.configDir) die('This project has no .storybook folder. Run the `storybook` command of the skill first.');
     if (!info.installed) die('Storybook is not installed in this project. Install it first (the `storybook` command of the skill does this).');
     if (info.supported === false) die(`Storybook ${info.version} is too old. The preview needs Storybook 8 or newer.`);
-    storybook = await startDev(root, { command: config.storybook.buildCommand, startTimeoutMs: config.preview.startTimeoutMs, log });
+    storybook = await startDev(root, { command: storybookCommand(root, config), startTimeoutMs: config.preview.startTimeoutMs, log });
   }
 } catch (e) {
   die(e.message, e.output ? lastLines(e.output, 20) : undefined);
@@ -79,16 +88,24 @@ async function browser() {
   })();
   return browserPromise;
 }
+/* Storybook's URL form of args (key:value;key:value), for the simple values it accepts. Other args (objects, functions,
+   free text with punctuation) cannot travel in a URL, and the crop then shows the story's own value for them. */
+function argsParam(args) {
+  if (!args || typeof args !== 'object') return '';
+  const parts = Object.entries(args).filter(([k, v]) => /^[\w-]+$/.test(k) && (typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && /^[\w -]*$/.test(v) && v.length < 80)))
+    .map(([k, v]) => `${k}:${typeof v === 'boolean' ? `!${v}` : v}`);
+  return parts.length ? `&args=${encodeURIComponent(parts.join(';'))}` : '';
+}
 async function crop(c) {
   try {
     const m = String(c.selector).match(/^\[data-slot="(.+?)"\](?::nth\((\d+)\))?$/); if (!m) return null;
     const b = await browser();
-    const ctx = await b.newContext({ viewport: { width: c.viewport || 390, height: 800 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
+    const ctx = await b.newContext({ viewport: { width: c.viewport || 390, height: c.height || 800 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', reducedMotion: 'reduce' });
     try {
       const page = await ctx.newPage();
-      await page.goto(`${storybook.url}/iframe.html?id=${encodeURIComponent(c.story)}&viewMode=story`, { timeout: 20_000 });
+      await page.goto(`${storybook.url}/iframe.html?id=${encodeURIComponent(c.story)}&viewMode=story${argsParam(c.args)}`, { timeout: 20_000 });
       await page.waitForFunction(() => document.body.classList.contains('sb-show-main'), null, { timeout: 20_000 });
-      if (c.textScale === 200) await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+      if (c.textScale === 200) await scaleRootText(page, 2);
       await page.waitForTimeout(300);
       const rel = path.posix.join('visual-report', 'comments', `${c.id}.png`);
       fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
@@ -184,12 +201,15 @@ server.on('upgrade', (rq, socket, head) => {
 const port = args.port ? Number(args.port) : await freePort();
 await new Promise((r) => server.listen(port, '127.0.0.1', r));
 const url = `http://127.0.0.1:${port}/__reax/?token=${token}`;
-emit({ event: 'ready', url, storybook: `http://127.0.0.1:${port}/`, stories: index.stories.length, initial });
+const reach = previewReach();
+emit({ event: 'ready', url, storybook: `http://127.0.0.1:${port}/`, stories: index.stories.length, initial, reachable: reach.local, ...(reach.local ? {} : { reason: reach.reason }) });
+if (!reach.local) log(`The person's browser probably cannot open this address: ${reach.reason}. Publish a static preview instead (visual-test --static).`);
 log(`reax preview: ${url}`);
 
 let closing = false;
 async function shutdown() {
   if (closing) return; closing = true;
+  emit({ event: 'stopped' });
   server.close(); server.closeAllConnections?.();
   try { (await browserPromise)?.close(); } catch { /* not started */ }
   storybook.stop?.(); setTimeout(() => process.exit(0), 200);

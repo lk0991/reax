@@ -204,6 +204,12 @@ const api = async (path, method = 'GET', body) => {
 const GROUPS = { color: ['--color-'], padding: ['--space-', '--spacing-'], borderRadius: ['--radius-', '--rounded-'], fontSize: ['--text-', '--font-size-'], size: ['--size-'] };
 let TOKENS = { color: {}, padding: {}, borderRadius: {}, fontSize: {}, size: {} }; /* group -> name -> { raw, value } */
 const FLOOR = 24, FRAME_H = 520, MIN_W = 180, MAX_W = 1600;
+/* larger text multiplies the project's own root size, as the visual test does (a root of 62.5% becomes 125%) */
+function scaleText(doc, s) {
+  const root = doc.documentElement;
+  if (root.dataset.reaxBaseFont === undefined) { root.style.fontSize = ''; root.dataset.reaxBaseFont = doc.defaultView.getComputedStyle(root).fontSize; }
+  root.style.fontSize = s === 1 ? '' : `${parseFloat(root.dataset.reaxBaseFont) * s}px`;
+}
 const FIELDS = {
   padding: { key: 'padding', label: 'Padding', group: 'padding' }, borderRadius: { key: 'borderRadius', label: 'Radius', group: 'borderRadius' },
   fontSize: { key: 'fontSize', label: 'Text size', group: 'fontSize' }, color: { key: 'color', label: 'Text colour', group: 'color' },
@@ -239,7 +245,7 @@ async function onFrameLoad() {
   const st = sdoc.createElement('style'); st.id = 'reax-style';
   st.textContent = 'html.reax-parts [data-slot]{outline:1.5px dashed #1c2026!important;outline-offset:1px}*,*::before,*::after{caret-color:auto}';
   sdoc.head.appendChild(st);
-  sdoc.documentElement.style.fontSize = state.t200 ? '200%' : '';
+  scaleText(sdoc, state.t200 ? 2 : 1);
   sdoc.documentElement.classList.toggle('reax-parts', state.mode === 'anatomy' && state.view === 'parts');
   sdoc.addEventListener('mousemove', onMove); sdoc.addEventListener('mouseleave', () => (hl.style.display = 'none')); sdoc.addEventListener('click', onClick, true);
   let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { drawOverlay(); if (state.mode === 'anatomy' && slots().length !== state.slotCount) renderPanel(); }); };
@@ -422,7 +428,7 @@ function setMode(m) { state.mode = m; if (m === 'test') state.selected = null; h
 $$('#modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 $$('#presets button').forEach((b) => b.addEventListener('click', () => setWidth(Number(b.dataset.w))));
 $('#wInput').addEventListener('change', (e) => setWidth(Number(e.target.value) || state.width));
-$('#t200').addEventListener('change', (e) => { state.t200 = e.target.checked; if (sdoc) { sdoc.documentElement.style.fontSize = state.t200 ? '200%' : ''; buildTokens(); } drawOverlay(); renderPanel(); });
+$('#t200').addEventListener('change', (e) => { state.t200 = e.target.checked; if (sdoc) { scaleText(sdoc, state.t200 ? 2 : 1); buildTokens(); } drawOverlay(); renderPanel(); });
 $('#story').addEventListener('change', (e) => loadStory(e.target.value));
 function syncControls() { if ($('#controls').open !== WIDE.matches && (WIDE.matches || !state.userToggledControls)) $('#controls').open = WIDE.matches; }
 $('#controls').addEventListener('toggle', () => { if (!WIDE.matches) state.userToggledControls = true; });
@@ -479,7 +485,7 @@ document.addEventListener('keydown', (e) => {
 /* ---------- comments ---------- */
 async function loadState() { const s = await api('/state'); state.comments = s.comments; state.viewports = s.viewports; drawOverlay(); renderPanel(); }
 async function saveComment(text, send) {
-  const el = state.selected; let c; try { c = await api('/comments', 'POST', { text, story: state.story, viewport: state.width, textScale: state.t200 ? 200 : 100, selector: selectorOf(el), role: roleOf(el), name: nameOf(el), box: boxOf(el), component: state.stories.find((x) => x.id === state.story)?.title, sent: !!send }); } catch { announce('Could not save the comment'); return; }
+  const el = state.selected; let c; try { c = await api('/comments', 'POST', { text, story: state.story, viewport: state.width, height: state.frameH, args: state.args, textScale: state.t200 ? 200 : 100, selector: selectorOf(el), role: roleOf(el), name: nameOf(el), box: boxOf(el), component: state.stories.find((x) => x.id === state.story)?.title, sent: !!send }); } catch { announce('Could not save the comment'); return; }
   state.comments.push(c); deselect(); announce(send ? 'Comment saved and sent to Claude' : 'Comment saved');
 }
 async function patchComment(id, patch) { let c; try { c = await api('/comments/' + id, 'PATCH', patch); } catch { return; } state.comments = state.comments.map((x) => (x.id === id ? c : x)); drawOverlay(); renderPanel(); }
@@ -554,7 +560,7 @@ function commentPanel() {
   if (!stage) return h + '<p class="note">Loading the story.</p>';
   if (!slots().length) return h + '<p class="note">This story has no <code>data-slot</code> parts to comment on yet. Components made with reax mark their parts.</p>';
   if (!el) return h + `<p class="note">Click an element in the frame to attach a comment.</p>`;
-  return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div>`;
+  return h + selectedCard() + `<label class="sr" for="ctext">Comment text</label><textarea id="ctext" placeholder="What should change here?"></textarea><div class="actions"><button class="b" id="csave" type="button">Save comment</button><button class="b pri" id="csend" type="button">Save and send to Claude</button></div><p class="note">Claude usually answers in the chat within a few seconds. If it does not, say “check the preview” there.</p>`;
 }
 /* which parts the frame cuts off: out = wholly outside it, cut = at least partly outside it */
 function frameFit() {

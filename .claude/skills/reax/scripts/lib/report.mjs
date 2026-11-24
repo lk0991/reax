@@ -44,6 +44,15 @@ export function renderReport(run) {
   }
   if (run.config.axe.disabledRules.length) { out('Rules switched off in `.reax/visual-test.json`:'); out(); for (const r of run.config.axe.disabledRules) out(`- \`${r.id}\`: ${r.reason}`); out(); }
 
+  out('## Keyboard and focus checks'); out();
+  out('Run once per story at the first viewport with real key presses. A failed check breaks a Requirement and fails the run; one that tests a Default only warns. These checks do not cover everything: screen reader output, reading order and meaning still need a person.'); out();
+  const withKeys = run.stories.filter((s) => (s.keyboard || []).length);
+  if (!withKeys.length) out('Not run.'); else {
+    out('| Story | Card | Check | Result | Detail |'); out('| --- | --- | --- | --- | --- |');
+    for (const s of withKeys) for (const k of s.keyboard) out(`| ${esc(s.title)} / ${esc(s.name)} | ${s.card || '-'} | \`${k.id}\`${k.rule ? ` (${esc(k.rule)})` : ''} | ${k.error ? '**Could not run**' : k.ok === false ? (k.default ? 'Warning (a Default)' : '**Fails**') : k.ok ? 'Pass' : 'Not applicable'} | ${esc(k.detail || '')} |`);
+  }
+  out();
+
   out('## Other findings'); out();
   const other = [];
   for (const s of run.stories) {

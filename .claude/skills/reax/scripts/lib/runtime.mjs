@@ -6,6 +6,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 export const CACHE = process.env.REAX_HOME || path.join(os.homedir(), '.cache', 'reax');
 
@@ -28,7 +31,7 @@ export function req(name, projectRoot = process.cwd()) {
   for (const r of roots) {
     try { return createRequire(r)(name); } catch (e) { lastError = e; }
   }
-  const err = new Error(`Dependency "${name}" is not installed. Run: node ${path.join(import.meta.dirname, '..', 'setup.mjs')} --install`);
+  const err = new Error(`Dependency "${name}" is not installed. Run: node ${path.join(HERE, '..', 'setup.mjs')} --install`);
   err.code = 'REAX_MISSING_DEP'; err.cause = lastError;
   throw err;
 }
@@ -49,17 +52,6 @@ export function chromiumPath(projectRoot = process.cwd()) {
 }
 
 export const sha1 = (data) => crypto.createHash('sha1').update(data).digest('hex');
-
-/** Hash the content of files (sorted by path), for staleness checks. Missing files hash as "missing". */
-export function hashFiles(files) {
-  const h = crypto.createHash('sha1');
-  for (const f of [...files].sort()) {
-    h.update(f + '\0');
-    try { h.update(fs.readFileSync(f)); } catch { h.update('missing'); }
-    h.update('\0');
-  }
-  return h.digest('hex');
-}
 
 /** Find the nearest directory upward from `start` that contains one of `names`. */
 export function findUp(start, names) {

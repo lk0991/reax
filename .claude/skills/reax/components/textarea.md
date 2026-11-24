@@ -29,11 +29,14 @@ Fixed rows, auto-grow.
 ## States, mapped to stories
 default, with hint, filled, long text that scrolls, error, disabled, read-only, with counter at the limit, 320px, 200% text.
 
-## MUST
-- Everything in `input.md`.
+## Requirements
+- Everything in `input.md`'s Requirements.
+- A character counter is announced as a polite live region (4.1.3).
+
+## Defaults
+- Everything in `input.md`'s Defaults.
 - Resize only vertically (`resize: vertical`), never horizontally.
-- A character counter is a polite live region that updates after typing pauses, not on every key. Do not block typing at the limit without telling the user.
-- The control fills the field width.
+- The counter updates after typing pauses, not on every key. Typing is not blocked at the limit without telling the user.
 
 ## Mobile
 Rows default to 3 so the keyboard does not hide the label. Auto-grow stops at a max height and then scrolls.

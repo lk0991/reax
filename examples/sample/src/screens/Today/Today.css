@@ -1,0 +1,10 @@
+.sample-today { display: grid; gap: var(--gap-4); max-width: 40rem; margin: 0 auto; }
+.sample-today__header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gap-3); }
+.sample-today__title { margin: 0; font-size: var(--type-title); }
+.sample-today__date { margin: var(--gap-1) 0 0; color: var(--ink-600); font-size: var(--type-small); }
+.sample-today__list { display: grid; gap: var(--gap-3); margin: 0; padding: 0; list-style: none; }
+.sample-today__list > li { min-width: 0; }
+.sample-today__placeholder { min-height: 5rem; border-radius: var(--corner-m); background: var(--paper-sunken); }
+.sample-today__message { display: grid; gap: var(--gap-3); justify-items: start; margin: 0; padding: var(--gap-4); border-radius: var(--corner-m); background: var(--paper-sunken); color: var(--ink-600); }
+.sample-today__message p { margin: 0; }
+@media (min-width: 768px) { .sample-today__list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
