@@ -29,7 +29,7 @@ function asTitle(c) {
 export function composeComponentsMarkdown(draft, existing = null) {
   const conv = draft.components.conventions; const prose = draft.components.prose || {};
   const kept = existing ? new Map(splitSections(existing).sections.filter((s) => HUMAN.has(s.name) || !['Layout', 'Code', 'Styling', 'Props', 'Stories', 'Template', 'Tokens in code'].includes(s.name)).map((s) => [s.name, s.text])) : new Map();
-  const parts = [`# Component conventions\n\nHow this project writes components, so new ones match. Written by reax \`init\` from ${conv.scanned} component${conv.scanned === 1 ? '' : 's'} in \`${conv.componentsDir}\`; the tables are regenerated, the Overview and Notes are yours. Machine-readable detail: \`@.reax/design.json\` (\`conventions\`).`];
+  const parts = [`# Component conventions\n\nHow this project writes components, so new ones match. Written by reax \`init\` from ${conv.scanned} component${conv.scanned === 1 ? '' : 's'} in \`${conv.componentsDir}\`; the tables are regenerated, the Overview and Notes are yours. Machine-readable detail: \`@.reax/design.json\` (\`conventions\`).${draft.scan?.screensDir ? ` Screens live in \`${draft.scan.screensDir}\`, shaped like a component folder, with \`Screens/<Name>\` story titles.` : ''}`];
   parts.push(kept.get('Overview') || `## Overview\n\n${prose.overview || '<!-- draft: two or three sentences on how components are built here -->'}`);
   for (const [title, key, labels] of GROUPS) {
     const rows = Object.entries(labels).map(([k, label]) => row(label, key === 'stories' && k === 'titlePrefix' ? asTitle(conv.stories?.titlePrefix) : conv[key]?.[k])).filter(Boolean);

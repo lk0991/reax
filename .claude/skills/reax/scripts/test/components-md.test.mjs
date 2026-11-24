@@ -71,3 +71,14 @@ test('without a components draft, nothing about COMPONENTS.md is written', () =>
   assert.equal(fs.existsSync(path.join(root, 'COMPONENTS.md')), false);
   assert.equal(loadDesign(root, { root }).errors.length, 0);
 });
+
+test('COMPONENTS.md says where screens live when the scan records a screens directory', () => {
+  const root = tmp();
+  planWrite(root, { ...DRAFT, scan: { ...DRAFT.scan, screensDir: 'src/screens' } }, { apply: true });
+  const md = fs.readFileSync(path.join(root, 'COMPONENTS.md'), 'utf8');
+  assert.match(md, /Screens live in `src\/screens`, shaped like a component folder/);
+  assert.match(md, /Screens\/<Name>/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, '.reax', 'design.json'), 'utf8')).scan.screensDir, 'src/screens');
+  const noScreens = tmp(); planWrite(noScreens, DRAFT, { apply: true });
+  assert.ok(!/Screens live in/.test(fs.readFileSync(path.join(noScreens, 'COMPONENTS.md'), 'utf8')));
+});

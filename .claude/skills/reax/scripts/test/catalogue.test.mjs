@@ -63,3 +63,20 @@ test('open findings per component: saved review findings and stories failing the
   assert.match(html, /1 open finding/);
   assert.match(html, /<details><summary>What is open<\/summary><ul><li>Raw colour in hover<\/li>/);
 });
+
+test('stories titled Screens/... are shown under their own heading, apart from components', () => {
+  const r = structuredClone(run);
+  r.stories.push({ id: 'screens-today--loaded', title: 'Screens/Today', name: 'Loaded', result: 'pass', captures: [cap('screens-today--loaded', 'mobile-390'), cap('screens-today--loaded', 'desktop-1280')] });
+  r.stories.push({ id: 'screens-today--empty', title: 'Screens/Today', name: 'Empty', result: 'pass', captures: [cap('screens-today--empty', 'mobile-390')] });
+  const { html } = renderCatalogue({ design, run: r, deviations: {} });
+  const compAt = html.indexOf('<h2>Components</h2>'); const screenAt = html.indexOf('<h2>Screens</h2>');
+  assert.ok(compAt > 0 && screenAt > compAt, 'a Screens section after Components');
+  assert.ok(html.indexOf('id="c-today"') > screenAt, 'Today is under Screens');
+  assert.ok(html.indexOf('id="c-button"') < screenAt, 'Button stays under Components');
+  assert.match(html, /A screen, built from the project's components/);
+  assert.match(html, /Loaded/); assert.match(html, /Empty/);
+});
+
+test('with no screens there is no Screens section', () => {
+  assert.ok(!renderCatalogue({ design, run }).html.includes('<h2>Screens</h2>'));
+});

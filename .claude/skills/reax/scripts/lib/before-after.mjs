@@ -16,6 +16,7 @@ export function listBaselines(root) {
 const LABEL = { 'mobile-390': '390 × 844', 'desktop-1280': '1280 × 800', 'reflow-320': '320 reflow', 'text-200': '200% text' };
 const label = (v) => LABEL[v] || (String(v).startsWith('pinned-') ? `${String(v).slice(7)}px (pinned)` : v);
 const component = (id) => id.split('--')[0];
+const kindOf = (s) => (/^Screens\//i.test(s.title) ? 'screen' : 'component');
 const PAD = 16;
 
 /** The area to show of a changed capture: its content and the changed pixels, plus a margin; null to show it whole. */
@@ -42,14 +43,14 @@ export function beforeAfter(run, baselines = {}) {
   const changed = []; const unchanged = []; const added = []; const copies = []; const files = [];
   for (const s of run.stories) {
     const has = baselines[s.id] || [];
-    if (!has.length) { const first = s.captures.find((c) => c.screenshot); added.push({ id: s.id, title: s.title, name: s.name, after: first?.screenshot || null, crop: first ? cropOf({ ...first, diff: null }) : null }); if (first) files.push(first.screenshot); continue; }
+    if (!has.length) { const first = s.captures.find((c) => c.screenshot); added.push({ id: s.id, title: s.title, name: s.name, kind: kindOf(s), after: first?.screenshot || null, crop: first ? cropOf({ ...first, diff: null }) : null }); if (first) files.push(first.screenshot); continue; }
     const caps = s.captures.filter((c) => c.baseline === 'changed' && c.screenshot && has.includes(c.viewport)).map((c) => {
       const before = `before/${s.id}/${c.viewport}.png`;
       copies.push({ from: `.reax/baselines/${s.id}/${c.viewport}.png`, to: before });
       files.push(before, c.screenshot, ...(c.diff?.image ? [c.diff.image] : []));
       return { viewport: c.viewport, before, after: c.screenshot, diff: c.diff?.image || null, ratio: c.diff?.ratio ?? null, sizeChanged: !!c.diff?.dimsDiffer, crop: cropOf(c) };
     });
-    (caps.length ? changed : unchanged).push({ id: s.id, title: s.title, name: s.name, captures: caps });
+    (caps.length ? changed : unchanged).push({ id: s.id, title: s.title, name: s.name, kind: kindOf(s), captures: caps });
   }
   const covered = new Set(run.stories.map((s) => component(s.id)));
   const present = new Set(run.stories.map((s) => s.id));
@@ -64,6 +65,7 @@ const CSS = `.ba { display: grid; gap: 16px; }
 .ba-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; align-items: start; }
 .ba-pair figure { margin: 0; min-width: 0; } .ba-pair figcaption { color: var(--muted); font-size: 0.875rem; }
 .ba-pair img { display: block; max-width: 100%; max-height: 420px; height: auto; border: 1px solid var(--line); background: #fff; }
+.ba-kind { margin: 8px 0 0; font-size: 1rem; }
 .ba-note { color: var(--muted); font-size: 0.875rem; margin: 0; }
 .ba-pair .crop { position: relative; overflow: hidden; width: 100%; border: 1px solid var(--line); background: #fff; }
 .ba-pair .crop img { position: absolute; max-width: none; max-height: none; border: 0; }`;
@@ -73,7 +75,13 @@ export function renderBeforeAfter(m) {
   const pair = (s) => `<article class="ba-story"><h3>${esc(s.title)} / ${esc(s.name)}</h3>${s.captures.map((c) => `<p class="ba-note">${esc(label(c.viewport))}${c.ratio !== null ? ` · ${(c.ratio * 100).toFixed(c.ratio < 0.01 ? 2 : 1)}% of pixels differ` : ''}${c.sizeChanged ? ' · the size changed' : ''}</p><div class="ba-pair"><figure>${shot(c.before, `${s.name} before, at ${label(c.viewport)}`, c.crop)}<figcaption>Before (approved)</figcaption></figure><figure>${shot(c.after, `${s.name} after, at ${label(c.viewport)}`, c.crop)}<figcaption>After</figcaption></figure>${c.diff ? `<figure>${shot(c.diff, `Where ${s.name} changed, at ${label(c.viewport)}`, c.crop)}<figcaption>Where it changed (red)</figcaption></figure>` : ''}</div>`).join('')}</article>`;
   const parts = [`<h2 id="ba-h">Before and after</h2>`];
   if (!m.changed.length && !m.added.length && !m.removed.length) parts.push('<p>Nothing looks different from the approved screenshots.</p>');
-  parts.push(...m.changed.map(pair));
+  // components and screens are shown apart, with sub-headings, only when the change has screens
+  const hasScreens = [...m.changed, ...m.added].some((s) => s.kind === 'screen');
+  for (const kind of hasScreens ? ['component', 'screen'] : [null]) {
+    const mine = kind ? m.changed.filter((s) => s.kind === kind) : m.changed;
+    if (kind && mine.length) parts.push(`<h3 class="ba-kind">${kind === 'screen' ? 'Screens' : 'Components'}</h3>`);
+    parts.push(...mine.map(pair));
+  }
   if (m.added.length) parts.push(`<article class="ba-story"><h3>New stories, with nothing approved to compare against</h3><div class="ba-pair">${m.added.map((s) => (s.after ? `<figure>${shot(s.after, `${s.name}, new`, s.crop)}<figcaption>${esc(s.title)} / ${esc(s.name)}</figcaption></figure>` : `<p>${esc(s.title)} / ${esc(s.name)}</p>`)).join('')}</div></article>`);
   if (m.removed.length) parts.push(`<p class="ba-note">Approved screenshots for stories that no longer exist (removed, or renamed): ${m.removed.map(esc).join(', ')}.</p>`);
   if (m.unchanged.length) parts.push(`<p class="ba-note">Checked, unchanged: ${m.unchanged.map((s) => `${esc(s.title.split('/').pop())} / ${esc(s.name)}`).join(', ')}.</p>`);

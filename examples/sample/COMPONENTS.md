@@ -1,6 +1,6 @@
 # Component conventions
 
-How this project writes components, so new ones match. Written by reax `init` from 4 components in `src/components`; the tables are regenerated, the Overview and Notes are yours. Machine-readable detail: `@.reax/design.json` (`conventions`).
+How this project writes components, so new ones match. Written by reax `init` from 4 components in `src/components`; the tables are regenerated, the Overview and Notes are yours. Machine-readable detail: `@.reax/design.json` (`conventions`). Screens live in `src/screens`, shaped like a component folder, with `Screens/<Name>` story titles.
 
 ## Overview
 

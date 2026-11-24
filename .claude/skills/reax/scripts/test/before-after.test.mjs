@@ -80,3 +80,17 @@ test('listBaselines reads story folders only, ignoring stray files such as .DS_S
   assert.deepEqual(listBaselines(root), { 'a--b': ['mobile-390'] });
   assert.deepEqual(listBaselines(fs.mkdtempSync(path.join(os.tmpdir(), 'reax-bl-'))), {});
 });
+
+test('changed and new screens are shown under a Screens heading, apart from components', () => {
+  const r = structuredClone(run);
+  r.stories.push(story('screens-today--loaded', 'Loaded', [cap('mobile-390', 'changed')]));
+  r.stories.at(-1).title = 'Screens/Today';
+  r.stories.push(story('screens-today--empty', 'Empty', [cap('mobile-390', 'none')]));
+  r.stories.at(-1).title = 'Screens/Today';
+  const m = beforeAfter(r, { ...baselines, 'screens-today--loaded': ['mobile-390'] });
+  assert.deepEqual(m.changed.map((s) => s.kind), ['component', 'screen']);
+  const html = renderBeforeAfter(m);
+  assert.match(html, /<h3 class="ba-kind">Components<\/h3>[\s\S]*<h3 class="ba-kind">Screens<\/h3>[\s\S]*Screens\/Today \/ Loaded/);
+  // only components: no sub-headings
+  assert.ok(!/<h3 class="ba-kind"/.test(renderBeforeAfter(beforeAfter(run, baselines))));
+});

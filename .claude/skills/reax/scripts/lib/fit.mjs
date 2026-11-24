@@ -60,7 +60,7 @@ export function fitCheck(files, design = {}) {
         } else if (spacing.length) {
           for (const part of value.split(/\s+/)) {
             const n = toPx(part); if (n === null || n === 0) continue;
-            if (!spacing.some((t) => Math.abs(toPx(t.resolved) - n) < 0.01)) { const b = nearest(spacing, n); add(f.path, line, 'spacing', part, `Spacing ${part} (${px(n)}) is not on the project's spacing scale. The nearest is var(${b.css}) (${b.resolved}).`); }
+            if (!spacing.some((t) => Math.abs(toPx(t.resolved) - n) < 0.01)) { const b = nearest(spacing, n); add(f.path, line, 'spacing', part, `Spacing ${part}${part === px(n) ? '' : ` (${px(n)})`} is not on the project's spacing scale. The nearest is var(${b.css}) (${b.resolved}).`); }
           }
         }
       }

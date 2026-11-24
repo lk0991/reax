@@ -43,16 +43,17 @@ export function renderCatalogue({ design, run, deviations = null, findings = {},
   const shadows = Object.entries(design.sidecar?.shadows || {});
   const shadowHtml = shadows.length ? `<section class="group"><h3>Shadows</h3><div class="items rounded">${shadows.map(([k, v]) => `<div class="rd"><i style="box-shadow:${esc(v)}"></i><code>${esc(k)} · ${esc(v)}</code></div>`).join('')}</div></section>` : '';
 
-  const byComponent = new Map();
-  for (const s of run?.stories || []) { const name = s.title.split('/').pop().trim(); if (!byComponent.has(name)) byComponent.set(name, []); byComponent.get(name).push(s); }
+  const byComponent = new Map(); const byScreen = new Map();
+  for (const s of run?.stories || []) { const name = s.title.split('/').pop().trim(); const group = /^Screens\//i.test(s.title) ? byScreen : byComponent; if (!group.has(name)) group.set(name, []); group.get(name).push(s); }
   const inv = (name) => (design.inventory || []).find((c) => c.name.toLowerCase() === name.toLowerCase());
-  const compHtml = [...byComponent].map(([name, stories]) => {
+  const section = (group, screens) => [...group].map(([name, stories]) => {
     const card = inv(name)?.card;
-    const conv = deviations === null ? 'Conventions are not recorded (no COMPONENTS.md).' : deviations[name] ? `${deviations[name]} difference${deviations[name] === 1 ? '' : 's'} from the project's conventions.` : 'Follows the project\'s conventions.';
+    const conv = screens ? 'A screen, built from the project\'s components.' : deviations === null ? 'Conventions are not recorded (no COMPONENTS.md).' : deviations[name] ? `${deviations[name]} difference${deviations[name] === 1 ? '' : 's'} from the project's conventions.` : 'Follows the project\'s conventions.';
     const open = findings[name];
     const st = stories.map((s) => `<div class="story"><h4>${esc(s.name)}${s.result === 'failure' ? ' <span class="tag bad">Fails a check</span>' : ''}</h4><div class="shots">${s.captures.filter((c) => SHOWN.includes(c.viewport) && c.screenshot).map((c) => { files.push(c.screenshot); return `<figure>${shot(c.screenshot, `${name} / ${s.name} at ${c.viewport === 'mobile-390' ? '390' : '1280'} wide`, cropOf({ ...c, diff: null }), 1)}<figcaption>${c.viewport === 'mobile-390' ? 'Phone' : 'Desktop'}</figcaption></figure>`; }).join('')}</div></div>`).join('');
-    return `<article class="comp" id="c-${esc(name.toLowerCase())}"><header><h3>${esc(name)}</h3><p class="meta">${card ? `Follows the ${esc(card)} card.` : 'No card: the shared rules apply.'} ${esc(conv)}${open ? ` <span class="tag ${open.worst === 'blocking' ? 'bad' : 'warn'}">${open.count} open finding${open.count === 1 ? '' : 's'}</span>` : ''}</p>${open?.items?.length ? `<details><summary>What is open</summary><ul>${open.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</header>${st}</article>`;
+    return `<article class="comp" id="c-${esc(name.toLowerCase())}"><header><h3>${esc(name)}</h3><p class="meta">${screens ? '' : card ? `Follows the ${esc(card)} card. ` : 'No card: the shared rules apply. '}${esc(conv)}${open ? ` <span class="tag ${open.worst === 'blocking' ? 'bad' : 'warn'}">${open.count} open finding${open.count === 1 ? '' : 's'}</span>` : ''}</p>${open?.items?.length ? `<details><summary>What is open</summary><ul>${open.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}</header>${st}</article>`;
   }).join('');
+  const compHtml = section(byComponent, false); const screenHtml = section(byScreen, true);
 
   const title = `${design.meta?.name || 'Design system'} catalogue`;
   const html = page({
@@ -77,6 +78,7 @@ details { margin-top: 6px; font-size: 0.875rem; } summary { cursor: pointer; col
 <header><h1>${esc(title)}</h1><p class="meta">Every token and component, from the visual test of ${esc(String(run?.startedAt || '').replace('T', ' ').slice(0, 16))} UTC. Token names are the ones in the code.${scope ? ` This run covered only ${esc(scope)}: run the visual test with --all for every component.` : ''}</p></header>
 <section><h2>Tokens</h2><div style="display:grid;gap:12px">${tokenHtml}${shadowHtml}</div></section>
 <section><h2>Components</h2>${compHtml || '<p>No stories yet.</p>'}</section>
+${screenHtml ? `<section><h2>Screens</h2>${screenHtml}</section>` : ''}
 </main>`,
   });
   return { html, files: [...new Set(files)] };

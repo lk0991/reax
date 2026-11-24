@@ -60,7 +60,7 @@ In chat: the counts (failures, warnings, passes), the blocking items in a line e
 
 ## The catalogue
 
-Every run also writes `visual-report/catalogue.html`: every token by its real name (colours with their contrast on the ground), and each component's stories at phone and desktop width, with the card it follows, how far it follows `COMPONENTS.md`, and its open findings (saved review findings and stories failing the run). It is the page to show a person who wants to see the system rather than read it. It is complete only after a run with `--all` (the summary's `catalogue.complete`); a narrower run says which components it covered. Publish it like the gallery, with the screenshots it references.
+Every run also writes `visual-report/catalogue.html`: every token by its real name (colours with their contrast on the ground), and each component's stories at phone and desktop width, with the card it follows, how far it follows `COMPONENTS.md`, and its open findings (saved review findings and stories failing the run). Stories titled `Screens/...` are shown under their own Screens heading. It is the page to show a person who wants to see the system rather than read it. It is complete only after a run with `--all` (the summary's `catalogue.complete`); a narrower run says which components it covered. Publish it like the gallery, with the screenshots it references.
 
 ## When the person cannot reach this machine
 

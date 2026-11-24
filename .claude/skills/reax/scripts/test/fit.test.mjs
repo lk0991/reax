@@ -36,7 +36,8 @@ test('spacing off the scale is flagged; values on the scale, in any unit, are no
   const r = run('a.css', `.a { padding: 13px 16px; margin: 0.75rem; gap: 24px; row-gap: 1.5em; margin-left: auto; padding-top: calc(1rem + 3px); }\n`);
   const found = r.findings.filter((f) => f.kind === 'spacing').map((f) => f.found);
   assert.deepEqual(found, ['13px', '0.75rem']);
-  assert.match(r.findings[0].message, /0\.75rem|12px|1rem|0\.5rem/);
+  assert.match(r.findings[0].message, /Spacing 13px is not on/);
+  assert.match(r.findings[1].message, /Spacing 0\.75rem \(12px\) is not on/);
 });
 
 test('type sizes off the scale are flagged; token sizes are not', () => {
