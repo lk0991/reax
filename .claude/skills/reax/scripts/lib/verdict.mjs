@@ -7,7 +7,7 @@ import path from 'node:path';
 import { page, esc } from './page.mjs';
 
 export const CHECKS = [
-  ['typecheck', 'Type check'], ['lint', 'Lint'], ['visualTest', 'Visual test'], ['review', 'Review'], ['conventions', 'Conventions'], ['reviewer', 'Independent reviewer'],
+  ['typecheck', 'Type check'], ['lint', 'Lint'], ['visualTest', 'Visual test'], ['review', 'Review'], ['conventions', 'Conventions'], ['fit', 'Fit with the design'], ['reviewer', 'Independent reviewer'],
 ];
 const NOT_BUILT = { status: 'not-run', reason: 'reax does not run this check yet.', howTo: 'A developer looks at this part instead.' };
 const LOCKFILES = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb', 'bun.lock']);
@@ -22,11 +22,12 @@ export function dependencyChanges(before = {}, after = {}) {
 }
 
 /** Which components a change touches, and what it touches outside them. */
-export function classifyScope(files, { componentsDir = 'src/components', tokenFiles = [] } = {}) {
-  const dir = componentsDir.replace(/\/$/, '') + '/';
+export function classifyScope(files, { componentsDir = 'src/components', screensDir = null, tokenFiles = [] } = {}) {
+  const dirs = [componentsDir, screensDir].filter(Boolean).map((d) => d.replace(/\/$/, '') + '/');
   const components = new Set(); const outside = []; const global = [];
   for (const f of files) {
-    if (f.startsWith(dir)) { const rest = f.slice(dir.length); const name = rest.includes('/') ? rest.split('/')[0] : path.posix.basename(rest).replace(/\..*$/, ''); if (rest.includes('/') || /^[A-Z]/.test(name)) components.add(name); continue; }
+    const dir = dirs.find((d) => f.startsWith(d));
+    if (dir) { const rest = f.slice(dir.length); const name = rest.includes('/') ? rest.split('/')[0] : path.posix.basename(rest).replace(/\..*$/, ''); if (rest.includes('/') || /^[A-Z]/.test(name)) components.add(name); continue; }
     outside.push(f);
     if (/\.(css|scss|sass|less)$/.test(f) || /^\.storybook\/preview\./.test(f) || tokenFiles.includes(f)) global.push(f);
   }
@@ -69,6 +70,10 @@ export function decide(e) {
       for (const d of c.deviations || []) concerns.push(`${d.component} breaks a project convention: ${d.label}`);
       const n = (c.deviations || []).length;
       line(key, label, n ? 'concern' : 'pass', n ? `${plural(n, 'place')} where the code is written differently from the rest of the project.` : 'The code is written the way the project\'s other components are.', (c.deviations || []).map((d) => `${d.component}: ${d.label} (expected ${JSON.stringify(d.expected)}, found ${JSON.stringify(d.found)})`).join('\n'));
+    } else if (key === 'fit') {
+      const fs = c.findings || [];
+      for (const f of fs) concerns.push(`${f.file}:${f.line} ${f.message}`);
+      line(key, label, fs.length ? 'concern' : 'pass', fs.length ? `${plural(fs.length, 'place')} where the code strays from the project's design: colours, spacing, type or corners that are not the project's own, or a screen with several primary actions.` : 'The code uses only the project\'s own colours, spacing, type and corners, and each screen has one main action.', fs.map((f) => `${f.file}:${f.line} [${f.kind}] ${f.message}`).join('\n'));
     } else if (key === 'reviewer') {
       if (c.verdict === 'blocked') { blocking.push(`Independent reviewer: ${(c.findings || []).map((f) => f.what || f).join('; ') || 'blocks the change'}`); line(key, label, 'fail', 'A reviewer that did not write the code found problems that must be fixed.', (c.findings || []).map((f) => f.what || f).join('\n')); }
       else if (c.verdict === 'concerns' || (c.findings || []).length) { for (const f of c.findings || []) concerns.push(`Independent reviewer: ${f.what || f}`); line(key, label, 'concern', 'A reviewer that did not write the code has concerns.', (c.findings || []).map((f) => f.what || f).join('\n')); }

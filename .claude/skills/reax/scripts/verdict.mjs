@@ -17,7 +17,9 @@ import { changedFiles } from './lib/select.mjs';
 import { mergeConfig } from './lib/capture.mjs';
 import { decide, renderVerdict, dependencyChanges, classifyScope } from './lib/verdict.mjs';
 import { previewReach } from './lib/reach.mjs';
-import { lintCommand, reviewEvidence, conventionsEvidence, reviewerEvidence, reviewerPacket, currentChange } from './lib/evidence.mjs';
+import { lintCommand, reviewEvidence, conventionsEvidence, reviewerEvidence, reviewerPacket, currentChange, fitEvidence } from './lib/evidence.mjs';
+import { loadDesign } from './lib/design.mjs';
+import { screensDir } from './lib/screens.mjs';
 import { cardFor } from './lib/cards.mjs';
 import { beforeAfter, renderBeforeAfter, listBaselines } from './lib/before-after.mjs';
 
@@ -33,7 +35,7 @@ const outDir = path.join(root, 'visual-report', 'verdict');
 /* ---------- scope ---------- */
 const changed = changedFiles(root, { base: config.baseBranch }) || [];
 const componentsDir = sidecar.scan?.componentsDir || sidecar.conventions?.componentsDir || 'src/components';
-const scope = { base: changed.base || null, changedFiles: [...changed], ...classifyScope([...changed], { componentsDir, tokenFiles: sidecar.scan?.tokenFiles || [] }), expected: args.expect ? String(args.expect).split(',').map((s) => s.trim()) : [] };
+const scope = { base: changed.base || null, changedFiles: [...changed], ...classifyScope([...changed], { componentsDir, screensDir: screensDir(sidecar), tokenFiles: sidecar.scan?.tokenFiles || [] }), expected: args.expect ? String(args.expect).split(',').map((s) => s.trim()) : [] };
 if (args.component) scope.components = String(args.component).split(',').map((s) => s.trim());
 const show = (rev) => { const r = spawnSync('git', ['-C', root, 'show', `${rev}:./package.json`], { encoding: 'utf8' }); try { return r.status === 0 ? JSON.parse(r.stdout) : null; } catch { return null; } };
 const before = show(changed.base ? spawnSync('git', ['-C', root, 'merge-base', changed.base, 'HEAD'], { encoding: 'utf8' }).stdout.trim() || changed.base : 'HEAD');
@@ -89,7 +91,7 @@ function lint() {
 const review = readJson(path.join(root, 'visual-report', 'review.json'), {}) || {};
 const changedAt = {};
 for (const f of scope.changedFiles) {
-  const c = classifyScope([f], { componentsDir }).components[0]; if (!c) continue;
+  const c = classifyScope([f], { componentsDir, screensDir: screensDir(sidecar) }).components[0]; if (!c) continue;
   try { changedAt[c] = Math.max(changedAt[c] || 0, fs.statSync(path.join(root, f)).mtimeMs); } catch { /* deleted */ }
 }
 
@@ -101,6 +103,7 @@ const evidence = { createdAt: new Date().toISOString(), root: path.basename(root
   typecheck: typecheck(), lint: lint(), visualTest: visualTest(),
   review: scope.components.length ? reviewEvidence(review, scope.components, changedAt) : { status: 'not-run', reason: 'No component changed.', howTo: 'Name the components with --component.' },
   conventions: conventionsEvidence(root, sidecar.conventions || null, scope.components, review),
+  fit: fitEvidence(root, scope.changedFiles, { componentsDir, screensDir: screensDir(sidecar), tokenFiles: sidecar.scan?.tokenFiles || [] }, loadDesign(root, { root })),
   reviewer: reviewerEvidence(readJson(reviewerFile, null), hash),
 }, diffHash: hash };
 const v = decide(evidence);

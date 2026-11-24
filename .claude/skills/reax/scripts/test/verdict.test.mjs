@@ -10,7 +10,7 @@ const good = () => ({
     typecheck: { status: 'pass', command: 'tsc --noEmit -p .' },
     visualTest: { status: 'pass', summary: { total: 4, pass: 4, warning: 0, failure: 0 }, failures: [], warnings: [], changedFromBaseline: [], report: 'visual-report/report.md' },
     lint: { status: 'pass', command: 'eslint' }, review: { status: 'pass', blocking: [], shouldFix: [] }, conventions: { status: 'pass', deviations: [] },
-    reviewer: { status: 'pass', verdict: 'agree', findings: [] },
+    reviewer: { status: 'pass', verdict: 'agree', findings: [] }, fit: { status: 'pass', findings: [] },
   },
 });
 
@@ -114,4 +114,27 @@ test('a visual test that crashed or never finished blocks, even with no failing 
 test('classifyScope ignores files directly in the components directory that are not components (a barrel index)', () => {
   const s = classifyScope(['src/components/index.ts', 'src/components/Button.tsx', 'src/components/Card/Card.tsx'], { componentsDir: 'src/components' });
   assert.deepEqual(s.components, ['Button', 'Card']);
+});
+
+test('the fit check: findings make it needs work, shown in plain words with where; a gap when it could not run', () => {
+  const e = good(); e.checks.fit = { status: 'concern', findings: [{ file: 'src/screens/Today/Today.css', line: 4, kind: 'colour', found: '#1f4f9b', message: 'Uses #1f4f9b, which is not one of the project\'s colours. The nearest is var(--brand-blue-500).' }, { file: 'src/screens/Today/Today.tsx', line: 9, kind: 'primary-action', found: '2', message: '2 primary buttons in one screen.' }] };
+  const v = decide(e);
+  assert.equal(v.level, 'needs-work');
+  assert.ok(v.concerns.some((c) => /Today\.css:4/.test(c) && /nearest is var\(--brand-blue-500\)/.test(c)));
+  const html = renderVerdict(e, v);
+  assert.ok(html.includes('Fit with the design'));
+  assert.match(html, /2 places where the code strays from the project's design/);
+  const g = good(); g.checks.fit = { status: 'not-run', reason: 'The project has no tokens to check against.', howTo: 'Run direction.' };
+  assert.equal(decide(g).level, 'gaps');
+});
+
+test('without a fit check in the evidence (an older record), it is a named gap, never a pass', () => {
+  const e = good(); delete e.checks.fit;
+  assert.ok(decide(e).gaps.some((g) => g.check === 'fit'));
+});
+
+test('classifyScope counts a screen in the screens directory as a component of the change, not as a file outside', () => {
+  const s = classifyScope(['src/screens/Today/Today.tsx', 'src/screens/Today/Today.css', 'src/components/Button/Button.css', 'src/styles/global.css'], { componentsDir: 'src/components', screensDir: 'src/screens' });
+  assert.deepEqual(s.components, ['Button', 'Today']);
+  assert.deepEqual(s.outsideComponents, ['src/styles/global.css']);
 });

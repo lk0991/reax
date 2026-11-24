@@ -7,6 +7,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readJson, packageManager } from './runtime.mjs';
 import { analyzeComponents, collectFiles, deviations } from './conventions.mjs';
+import { fitCheck } from './fit.mjs';
 
 /** How to run the project's lint: its "lint" script, else ESLint on the changed files, else a named gap. */
 export function lintCommand(root, files = []) {
@@ -108,4 +109,16 @@ export function currentChange(root, base) {
   const untracked = git('ls-files', '--others', '--exclude-standard', '--', '.', ...exclude).stdout.split('\n').filter(Boolean);
   const diff = [git('diff', from, '--', '.', ...exclude).stdout, ...untracked.map((f) => git('diff', '--no-index', '--', '/dev/null', f).stdout)].join('\n').trim();
   return { diff, hash: diffHash(diff) };
+}
+
+/**
+ * The fit check for the changed code: components and screens (not stories, tests or token files), read from disk.
+ * `design` is loadDesign() output.
+ */
+export function fitEvidence(root, changedFiles, { componentsDir = 'src/components', screensDir = 'src/screens', tokenFiles = [] } = {}, design = {}) {
+  const inDir = (f, d) => f.startsWith(d.replace(/\/$/, '') + '/');
+  const files = changedFiles
+    .filter((f) => (inDir(f, componentsDir) || inDir(f, screensDir)) && !tokenFiles.includes(f) && !/\.(stories|test|spec)\.[jt]sx?$/.test(f) && fs.existsSync(path.join(root, f)))
+    .map((f) => ({ path: f, text: fs.readFileSync(path.join(root, f), 'utf8') }));
+  return fitCheck(files, design);
 }
